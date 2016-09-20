@@ -1,0 +1,15 @@
+apply plugin: 'maven-publish'
+
+version '1.0'
+
+repositories {
+    mavenCentral()
+}
+
+task sourceJar(type: Jar, dependsOn: classes) {
+    from sourceSets.main.output
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+}

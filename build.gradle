@@ -1,0 +1,41 @@
+import org.apache.tools.ant.filters.*
+
+allprojects {
+    group = 'au.sdshell.sample'
+    version = '1.0'
+}
+
+project.ext.toolsDir = "$buildDir/tools"
+project.ext.driverDir = "$buildDir"
+subprojects {
+    apply plugin: 'application'
+    apply plugin: 'java'
+    sourceCompatibility = 1.8
+    repositories {
+        mavenCentral()
+    }
+}
+
+// driver is not a tool!
+def tools = subprojects
+tools.removeAll { it.name.contains('driver') }
+
+task copyTools(type: Copy, dependsOn: tools.jar) {
+    from (tools.jar)
+    into project.file(rootProject.toolsDir)
+}
+
+project('driver') {
+    task copyDriver(type: Copy, dependsOn: project.jar) {
+        from(project.jar)
+        into project.file(rootProject.driverDir)
+    }
+}
+
+task deploy()  {
+    println "Deploying driver into " + rootProject.driverDir
+    println "Deploying tools into " + rootProject.toolsDir
+
+    dependsOn ':copyTools'
+    dependsOn ':driver:copyDriver'
+}
