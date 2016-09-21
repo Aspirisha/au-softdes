@@ -1,5 +1,7 @@
 package au.sdshell.driver;
 
+import au.sdshell.common.Environment;
+import au.sdshell.common.FileResolver;
 import org.junit.Test;
 
 import java.io.File;
@@ -24,7 +26,7 @@ public class ToolResolverTest {
 
         System.out.println(path);
 
-        Path p = ToolResolver.findTool(toolName);
+        Path p = FileResolver.findFile(toolName);
         assertTrue(p.toString().length() > 0);
         assertTrue(p.getFileName().toString().equals(toolName));
     }

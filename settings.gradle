@@ -1,2 +1,4 @@
-include 'cat', 'driver', ':echo'
+include ':cat', 'driver', ':echo'
+include ':pwd'
+include ':common'
 

@@ -5,8 +5,9 @@ import java.util.Arrays;
 /**
  * Created by andy on 9/20/16.
  */
-public class Echo {
+public class EchoTool {
     public static void main(String[] args) {
-        Arrays.stream(args).forEach(System.out::print);
+        Arrays.stream(args).forEach(s -> System.out.print(s + " "));
+        System.out.println("");
     }
 }

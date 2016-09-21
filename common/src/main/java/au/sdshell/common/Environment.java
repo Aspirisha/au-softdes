@@ -1,37 +1,27 @@
-package au.sdshell.driver;
-
-import org.apache.tools.ant.types.Commandline;
-import sun.rmi.runtime.Log;
+package au.sdshell.common;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
+import java.util.*;
 import java.util.regex.Pattern;
-
-import static jdk.nashorn.internal.objects.NativeString.indexOf;
+import java.util.stream.Collectors;
 
 /**
  * Created by andy on 9/16/16.
  */
 public class Environment {
     private Map<String, String> variables;
-    private Path currentDir;
 
-    public static final String defaultPath =
-            System.getProperty("user.home") + File.separator + "AU/3_sem/software_design/sdapps" +
-                    File.pathSeparator + System.getProperty("user.home") + File.separator + "/AU";
     private static final Environment instance = new Environment();
 
     private Environment() {
         variables = new HashMap<>();
-        variables.put("PATH", defaultPath);
-        currentDir = Paths.get(System.getProperty("user.dir"));
-        System.out.println(currentDir);
+        variables.putAll(System.getenv());
+    }
+
+    public void clearVariables() {
+        variables.clear();
     }
 
     public static Environment getInstance() {
@@ -47,27 +37,11 @@ public class Environment {
     }
 
     public Path getCurrentDir() {
-        return currentDir;
+        return Paths.get(variables.get("PWD"));
     }
 
     public void setCurrentDir(Path newDir) {
-        currentDir = newDir;
-    }
-
-    public List<Path> getPathPaths() {
-        String path = getVariable("PATH");
-        Matcher m = Pattern.compile("([^\"][^" + File.pathSeparator + "]*|\".+?\")" + File.pathSeparator).matcher(path);
-        LinkedList<Path> res = new LinkedList<>();
-        int beginOfLastPath = 0;
-        while (m.find()) {
-            res.add(Paths.get(m.group(1)));
-            beginOfLastPath = m.end();
-        }
-
-        if (beginOfLastPath < path.length()) {
-            res.add(Paths.get(path.substring(beginOfLastPath)));
-        }
-        return res;
+        variables.put("PWD", newDir.toString());
     }
 
     public static String substituteVariables(String s) {
@@ -80,7 +54,7 @@ public class Environment {
             for (int i = lastPossibleEnding; i > currentIndex; i--) {
                 String temp = s.substring(currentIndex, i);
                 if (instance.variables.containsKey(temp.substring(1))) {
-                    s = s.replaceFirst(temp, instance.getVariable(temp.substring(1)));
+                    s = s.replaceFirst(Pattern.quote(temp), instance.getVariable(temp.substring(1)));
                     foundVariable = true;
                 }
             }
@@ -91,5 +65,9 @@ public class Environment {
 
         }
         return s;
+    }
+
+    public final Map<String, String> getEnvironmentMap() {
+        return variables;
     }
 }

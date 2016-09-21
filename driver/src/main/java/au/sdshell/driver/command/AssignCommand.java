@@ -1,24 +1,21 @@
-package au.sdshell.driver;
+package au.sdshell.driver.command;
 
-import java.io.BufferedReader;
+import au.sdshell.common.Environment;
 
 /**
  * Created by andy on 9/18/16.
  */
-public class AssignCommand implements Command {
+public class AssignCommand {
     String name;
     String value;
 
-    AssignCommand(String name, String value) {
+    public AssignCommand(String name, String value) {
         this.name = name;
         this.value = value;
     }
 
-    @Override
-    public BufferedReader run(BufferedReader unused) {
+    public void run() {
         String realValue = Environment.substituteVariables(value);
         Environment.getInstance().setVariable(name, realValue);
-
-        return null;
     }
 }

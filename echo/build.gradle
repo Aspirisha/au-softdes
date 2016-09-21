@@ -1,4 +1,5 @@
 apply plugin: 'maven-publish'
+mainClassName = "au.sdshell.tools.echo.EchoTool"
 
 version '1.0'
 
@@ -8,6 +9,17 @@ repositories {
 
 task sourceJar(type: Jar, dependsOn: classes) {
     from sourceSets.main.output
+}
+
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'Gradle Jar File Example',
+                'Implementation-Version': version,
+                'Main-Class': "au.sdshell.tools.echo.EchoTool"
+    }
+    baseName = project.name + "-all"
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
 }
 
 dependencies {

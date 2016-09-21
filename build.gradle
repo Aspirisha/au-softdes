@@ -1,14 +1,21 @@
 import org.apache.tools.ant.filters.*
 
+import java.util.stream.Collectors
+
+import static java.lang.String.valueOf
+import static java.util.stream.Collectors.joining
+
 allprojects {
     group = 'au.sdshell.sample'
     version = '1.0'
 }
 
-project.ext.toolsDir = "$buildDir/tools"
-project.ext.driverDir = "$buildDir"
+def pathToDriverParts = [System.getProperty("user.home"), "sdshell"]
+def pathToToolsParts = [System.getProperty("user.home"), "sdshell", "tools"]
+project.ext.toolsDir = pathToToolsParts.stream().collect(joining(File.separator))
+project.ext.driverDir = pathToDriverParts.stream().collect(joining(File.separator))
+
 subprojects {
-    apply plugin: 'application'
     apply plugin: 'java'
     sourceCompatibility = 1.8
     repositories {
@@ -16,19 +23,30 @@ subprojects {
     }
 }
 
+configure(subprojects.findAll {it.name != 'common'}) {
+    apply plugin: 'application'
+    dependencies {
+        compile project(':common')
+    }
+}
+
 // driver is not a tool!
 def tools = subprojects
 tools.removeAll { it.name.contains('driver') }
+def toolTaskGetter = { it.getTasksByName('fatJar', false) }
+def toolsJars = tools.stream().map(toolTaskGetter).collect(Collectors.toList())
 
 task copyTools(type: Copy, dependsOn: tools.jar) {
-    from (tools.jar)
+    from(toolsJars)
     into project.file(rootProject.toolsDir)
+    rename { String fileName -> fileName.split("-")[0] }
 }
 
-project('driver') {
-    task copyDriver(type: Copy, dependsOn: project.jar) {
-        from(project.jar)
+project(':driver') {
+    task copyDriver(type: Copy, dependsOn: ':driver:fatJar') {
+        from(project.getTasksByName('fatJar', false))
         into project.file(rootProject.driverDir)
+        rename { String fileName -> "driver.jar" }
     }
 }
 

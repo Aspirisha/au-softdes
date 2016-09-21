@@ -1,5 +1,7 @@
 package au.sdshell.driver;
 
+import au.sdshell.driver.command.AssignCommand;
+import au.sdshell.driver.command.ToolCommand;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -7,7 +9,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static au.sdshell.driver.InputParser.parseInput;
 import static junit.framework.TestCase.assertNotNull;
 import static junit.framework.TestCase.assertTrue;
 import static org.hamcrest.CoreMatchers.is;
@@ -30,7 +31,7 @@ public class InputParserTest {
         String command = "cat";
 
         String s = getCommandLineFromArgsAndCommand(command, args);
-        List<Command> commands = InputParser.parseInput(s);
+        List<Object> commands = InputParser.parseInput(s);
 
         assertNotNull(commands);
         assertTrue(commands.size() == 1);
@@ -52,7 +53,7 @@ public class InputParserTest {
         String s1 = getCommandLineFromArgsAndCommand(command1, args1);
         String s2 = getCommandLineFromArgsAndCommand(command2, args2);
         String fullCommand = s1 + " | " + s2;
-        List<Command> commands = InputParser.parseInput(fullCommand);
+        List<Object> commands = InputParser.parseInput(fullCommand);
 
         Assert.assertNotNull(commands);
         assertEquals(2, commands.size());
@@ -67,7 +68,7 @@ public class InputParserTest {
     public void parseAssignmentSimpleTest() {
         String s = "foo=bar";
 
-        List<Command> commands = InputParser.parseInput(s);
+        List<Object> commands = InputParser.parseInput(s);
         assertNotNull(commands);
         assertEquals(1, commands.size());
         assertTrue(commands.get(0) instanceof AssignCommand);
