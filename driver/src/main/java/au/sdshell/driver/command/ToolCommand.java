@@ -2,8 +2,9 @@ package au.sdshell.driver.command;
 
 import au.sdshell.common.Environment;
 import au.sdshell.common.FileResolver;
+import javafx.util.Pair;
 
-import java.io.*;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -25,16 +26,6 @@ public class ToolCommand {
         SUCCESS
     }
 
-    public class ToolCommandResult {
-        public final ToolCommandStatus status;
-        public BufferedReader commandOutput;
-
-        ToolCommandResult(ToolCommandStatus s, BufferedReader br) {
-            status = s;
-            commandOutput = br;
-        }
-    }
-
     public ToolCommand(String name, List<String> args, boolean isPiped) {
         commandName = name;
         argumentsDescription = args;
@@ -45,14 +36,51 @@ public class ToolCommand {
         return commandName;
     }
 
-    public ToolCommandResult run(BufferedReader br) {
-        Process theProcess = null;
+    public ToolCommandStatus run() {
+        Pair<ProcessBuilder, ToolCommandStatus> pbAndStatus = prepareCommand();
+        if (pbAndStatus.getValue() != ToolCommandStatus.SUCCESS) {
+            return pbAndStatus.getValue();
+        }
 
+        ProcessBuilder pb = pbAndStatus.getKey();
+        pb.inheritIO();
+        Process p;
+        try {
+            p = pb.start();
+        } catch (IOException e) {
+            return ToolCommandStatus.EXECUTION_FAILURE;
+        }
+
+        while (p.isAlive()) {
+            try {
+                p.waitFor();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        return ToolCommandStatus.SUCCESS;
+    }
+
+    public Pair<Process, ToolCommandStatus> prepareCommandForPiping() {
+        Pair<ProcessBuilder, ToolCommandStatus> pbAndStatus = prepareCommand();
+
+        if (pbAndStatus.getValue() != ToolCommandStatus.SUCCESS) {
+            return new Pair<>(null, pbAndStatus.getValue());
+        }
+
+        try {
+            return new Pair<>(pbAndStatus.getKey().start(), ToolCommandStatus.SUCCESS);
+        } catch (IOException e) {
+            return new Pair<>(null, ToolCommandStatus.EXECUTION_FAILURE);
+        }
+    }
+
+    public Pair<ProcessBuilder, ToolCommandStatus> prepareCommand() {
         commandName = Environment.substituteVariables(commandName);
         Path tool = FileResolver.findFile(commandName);
 
         if (tool == null) {
-            return new ToolCommandResult(ToolCommandStatus.TOOL_NOT_FOUND, null);
+            return new Pair<>(null, ToolCommandStatus.TOOL_NOT_FOUND);
         }
 
         List<String> commandList = new LinkedList<>(Arrays.asList("java", "-jar", tool.toString()));
@@ -62,47 +90,12 @@ public class ToolCommand {
                 .collect(Collectors.toList()));
 
         String[] commandArray = new String[commandList.size()];
-        try {
-            ProcessBuilder pb = new ProcessBuilder(commandList.toArray(commandArray));
+        ProcessBuilder pb = new ProcessBuilder(commandList.toArray(commandArray));
 
-            Map<String, String> env = pb.environment();
-            env.clear();
-            env.putAll(Environment.getInstance().getEnvironmentMap());
-            pb.inheritIO();
-            theProcess = pb.start();
-            theProcess.waitFor();
-        } catch (IOException e) {
-            return new ToolCommandResult(ToolCommandStatus.EXECUTION_FAILURE, null);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        Map<String, String> env = pb.environment();
+        env.clear();
+        env.putAll(Environment.getInstance().getEnvironmentMap());
 
-        // read from the called program's standard output stream
-        BufferedReader inStream = new BufferedReader(new InputStreamReader
-                (theProcess.getInputStream()));
-        if (br != null) {
-            BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(theProcess.getOutputStream()));
-            String lineToPipe;
-            try {
-                while ((lineToPipe = br.readLine()) != null) {
-                    System.out.println("Output process1 / Input process2:" + lineToPipe);
-
-                    bufferedWriter.write(lineToPipe + '\n');
-                    bufferedWriter.flush();
-
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-        }
-
-        if (!isPiped) {
-            inStream.lines().forEach(System.out::println);
-            return new ToolCommandResult(ToolCommandStatus.SUCCESS, null);
-        } else {
-            return new ToolCommandResult(ToolCommandStatus.SUCCESS, inStream);
-        }
-
+        return new Pair<>(pb, ToolCommandStatus.SUCCESS);
     }
 }

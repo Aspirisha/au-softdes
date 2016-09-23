@@ -1,19 +1,19 @@
-mainClassName = "au.sdshell.driver.Driver"
 sourceCompatibility = 1.8
 
-repositories {
-    mavenCentral()
-}
+mainClassName = "au.sdshell.driver.Driver"
 
 task fatJar(type: Jar) {
     manifest {
-        attributes 'Implementation-Title': 'Gradle Jar File Example',
-                'Implementation-Version': version,
-                'Main-Class': "au.sdshell.driver.Driver"
+        attributes 'Implementation-Version': version,
+                'Main-Class': mainClassName
     }
     baseName = project.name + "-all"
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
+}
+
+repositories {
+    mavenCentral()
 }
 
 dependencies {

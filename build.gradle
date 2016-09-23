@@ -20,7 +20,7 @@ subprojects {
     sourceCompatibility = 1.8
     repositories {
         mavenCentral()
-    }
+    }git diif
 }
 
 configure(subprojects.findAll {it.name != 'common'}) {

@@ -1,21 +1,19 @@
-group 'au.sdshell.sample'
 version '1.0'
-
 sourceCompatibility = 1.8
-
-repositories {
-    mavenCentral()
-}
+mainClassName = "au.sdshell.tools.pwd.PwdTool"
 
 task fatJar(type: Jar) {
     manifest {
-        attributes 'Implementation-Title': 'Gradle Jar File Example',
-                'Implementation-Version': version,
-                'Main-Class': "au.sdshell.tools.pwd.PwdTool"
+        attributes 'Implementation-Version': version,
+                'Main-Class': mainClassName
     }
     baseName = project.name + "-all"
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
+}
+
+repositories {
+    mavenCentral()
 }
 
 dependencies {

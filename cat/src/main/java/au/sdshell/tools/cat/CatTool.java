@@ -20,7 +20,6 @@ import static se.softhouse.jargo.Arguments.*;
  * Created by andy on 9/19/16.
  */
 public class CatTool {
-    private String[] rawArgs;
     private Argument<?> helpArgument = helpArgument("-h", "--help"); //Will throw when -h is encountered
     private Argument<Boolean> linesNumber = optionArgument("-n", "--number")
             .description("number all output lines").defaultValue(false).build();
@@ -33,8 +32,6 @@ public class CatTool {
     private File fileName = null;
 
     CatTool(String[] args) {
-        rawArgs = args;
-
         try {
             arguments = CommandLineParser
                     .withArguments(linesNumber, fileNameArg)
