@@ -12,15 +12,17 @@ allprojects {
 
 def pathToDriverParts = [System.getProperty("user.home"), "sdshell"]
 def pathToToolsParts = [System.getProperty("user.home"), "sdshell", "tools"]
-project.ext.toolsDir = pathToToolsParts.stream().collect(joining(File.separator))
-project.ext.driverDir = pathToDriverParts.stream().collect(joining(File.separator))
+project.ext {
+    toolsDir = pathToToolsParts.stream().collect(joining(File.separator))
+    driverDir = pathToDriverParts.stream().collect(joining(File.separator))
+}
 
 subprojects {
     apply plugin: 'java'
     sourceCompatibility = 1.8
     repositories {
         mavenCentral()
-    }git diif
+    }
 }
 
 configure(subprojects.findAll {it.name != 'common'}) {
@@ -35,11 +37,22 @@ def tools = subprojects
 tools.removeAll { it.name.contains('driver') }
 def toolTaskGetter = { it.getTasksByName('fatJar', false) }
 def toolsJars = tools.stream().map(toolTaskGetter).collect(Collectors.toList())
+def registerFile = new File((String)rootProject.driverDir, ".tools")
 
 task copyTools(type: Copy, dependsOn: tools.jar) {
     from(toolsJars)
     into project.file(rootProject.toolsDir)
-    rename { String fileName -> fileName.split("-")[0] }
+    rename { String fileName ->
+        fileName.split("-")[0] }
+}
+
+task registerTools {
+    registerFile.withWriter {w -> w << ""}
+    configure(subprojects.findAll {it.name != 'common' && it.name != 'driver'}) {
+        registerFile.withWriterAppend { w ->
+            w << project.name << System.lineSeparator();
+        }
+    }
 }
 
 project(':driver') {
@@ -55,5 +68,6 @@ task deploy()  {
     println "Deploying tools into " + rootProject.toolsDir
 
     dependsOn ':copyTools'
+    dependsOn ':registerTools'
     dependsOn ':driver:copyDriver'
 }

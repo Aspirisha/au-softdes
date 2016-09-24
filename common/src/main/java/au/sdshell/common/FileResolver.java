@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  * Created by andy on 9/21/16.
  */
 public class FileResolver {
-    public static List<Path> getPathPaths() {
+    private static List<Path> getPathPaths() {
         String pathVariableValue = Environment.getInstance().getVariable("PATH");
         LinkedList<Path> res = new LinkedList<>();
         if (pathVariableValue == null)
@@ -73,17 +73,23 @@ public class FileResolver {
         return Paths.get(System.getenv("PWD")).resolve(toolName);
     }
 
-    public static Path findFile(String toolName) {
-        Path p = Paths.get(toolName);
+    /**
+     * Searches for a given file in file system. If file name is not relative or absolute,
+     * performs search in directories, listed in PATH environment variable.
+     * @param fileName non-null name of searched file
+     * @return absolute path of the file, if found, otherwise null
+     */
+    public static Path findFile(String fileName) {
+        Path p = Paths.get(fileName);
         if (p.isAbsolute()) {
-            return findFileAbsolutePath(toolName);
+            return findFileAbsolutePath(fileName);
         }
 
-        if (toolName.contains(File.separator)) {
-            return findFileRelativePath(toolName);
+        if (fileName.contains(File.separator)) {
+            return findFileRelativePath(fileName);
         }
 
 
-        return findFileInPath(toolName);
+        return findFileInPath(fileName);
     }
 }

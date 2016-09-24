@@ -1,5 +1,6 @@
-package au.sdshell.driver;
+package au.sdshell.driver.command;
 
+import au.sdshell.driver.InputParser;
 import au.sdshell.driver.command.AssignCommand;
 import au.sdshell.driver.command.ToolCommand;
 import org.junit.Assert;
@@ -38,7 +39,6 @@ public class InputParserTest {
         assertTrue(commands.get(0) instanceof ToolCommand);
         ToolCommand cmd = (ToolCommand) commands.get(0);
 
-        assertFalse(cmd.isPiped);
         assertThat(cmd.argumentsDescription, is(args));
     }
 
@@ -58,10 +58,6 @@ public class InputParserTest {
         Assert.assertNotNull(commands);
         assertEquals(2, commands.size());
         assertTrue(commands.get(0) instanceof ToolCommand && commands.get(1) instanceof ToolCommand);
-        ToolCommand tc1 = (ToolCommand) commands.get(0);
-        ToolCommand tc2 = (ToolCommand) commands.get(1);
-        assertTrue(tc1.isPiped);
-        assertFalse(tc2.isPiped);
     }
 
     @Test

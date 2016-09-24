@@ -2,23 +2,41 @@ package au.sdshell.driver.command;
 
 import au.sdshell.common.Environment;
 import au.sdshell.common.FileResolver;
+import au.sdshell.driver.Driver;
 import javafx.util.Pair;
 
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * Created by andy on 9/16/16.
  */
 public class ToolCommand {
+    private static final String toolsRegisterFile = Arrays.asList(Driver.rootDirectory, ".tools")
+            .stream().collect(Collectors.joining(File.separator));
+    private static Set<String> registeredCommands;
+
+    static {
+        registeredCommands = new HashSet<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(toolsRegisterFile))) {
+            String sCurrentLine;
+
+            while ((sCurrentLine = br.readLine()) != null) {
+                registeredCommands.add(sCurrentLine);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private String commandName;
-    final List<String> argumentsDescription; // each entry here is space-free string with substituted environment variables
-    boolean isPiped;
+    final List<String> argumentsDescription;
+
 
     public enum ToolCommandStatus {
         TOOL_NOT_FOUND,
@@ -26,17 +44,27 @@ public class ToolCommand {
         SUCCESS
     }
 
-    public ToolCommand(String name, List<String> args, boolean isPiped) {
+    /**
+     * @param name command name
+     *             the path to the command is resolved via {@link FileResolver}
+     * @param args command arguments
+     *             substitution of environment variables is done vi {@link Environment}
+     */
+    public ToolCommand(String name, List<String> args) {
         commandName = name;
         argumentsDescription = args;
-        this.isPiped = isPiped;
     }
 
     public String getCommandName() {
         return commandName;
     }
 
-    public ToolCommandStatus run() {
+    /**
+     * Executes command synchronously: i.e. current thread waits
+     * until spawned process is finished
+     * @return success of execution
+     */
+    public ToolCommandStatus runSync() {
         Pair<ProcessBuilder, ToolCommandStatus> pbAndStatus = prepareCommand();
         if (pbAndStatus.getValue() != ToolCommandStatus.SUCCESS) {
             return pbAndStatus.getValue();
@@ -61,7 +89,12 @@ public class ToolCommand {
         return ToolCommandStatus.SUCCESS;
     }
 
-    public Pair<Process, ToolCommandStatus> prepareCommandForPiping() {
+    /**
+     * Executes command asynchronously: i.e. current thread doesn't wait
+     * until spawned process is finished
+     * @return success of execution
+     */
+    public Pair<Process, ToolCommandStatus> runAsync() {
         Pair<ProcessBuilder, ToolCommandStatus> pbAndStatus = prepareCommand();
 
         if (pbAndStatus.getValue() != ToolCommandStatus.SUCCESS) {
@@ -75,19 +108,22 @@ public class ToolCommand {
         }
     }
 
-    public Pair<ProcessBuilder, ToolCommandStatus> prepareCommand() {
-        commandName = Environment.substituteVariables(commandName);
+    private Pair<ProcessBuilder, ToolCommandStatus> prepareCommand() {
         Path tool = FileResolver.findFile(commandName);
 
         if (tool == null) {
             return new Pair<>(null, ToolCommandStatus.TOOL_NOT_FOUND);
         }
 
-        List<String> commandList = new LinkedList<>(Arrays.asList("java", "-jar", tool.toString()));
-        commandList.addAll(argumentsDescription
-                .stream()
-                .map(Environment::substituteVariables)
-                .collect(Collectors.toList()));
+        List<String> commandList = null;
+        if (registeredCommands.contains(commandName)) {
+            commandList = new LinkedList<>(Arrays.asList("java", "-jar", tool.toString()));
+        } else {
+            commandList = new LinkedList<>();
+            commandList.add(commandName);
+        }
+
+        commandList.addAll(argumentsDescription);
 
         String[] commandArray = new String[commandList.size()];
         ProcessBuilder pb = new ProcessBuilder(commandList.toArray(commandArray));

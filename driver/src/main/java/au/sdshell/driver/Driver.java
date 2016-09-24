@@ -13,23 +13,23 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.stream.Collectors;
-
-import static au.sdshell.driver.command.ToolCommand.ToolCommandStatus.TOOL_NOT_FOUND;
 
 /**
  * Created by andy on 9/15/16.
  */
 public class Driver {
-    Signal sigInt = new Signal("INT");
-    // First register with SIG_DFL, just to get the old handler.
-    final SignalHandler oldHandler = Signal.handle(sigInt, SignalHandler.SIG_DFL);
-    volatile boolean isWaitingForChildProcess = false;
+    public static final String rootDirectory =  Arrays.asList(System.getProperty("user.home"),
+            "sdshell").stream().collect(Collectors.joining(File.separator));
+
+    private Signal sigInt = new Signal("INT");
+    private final SignalHandler oldHandler = Signal.handle(sigInt, SignalHandler.SIG_DFL);
+    private volatile boolean isWaitingForChildProcess = false;
     private MessageWriter messageWriter;
 
     private void setUpSignalHandling() {
-        // Now register the actual handler
         Signal.handle(sigInt, signal -> {
             if (!isWaitingForChildProcess)
                 oldHandler.handle(signal);
@@ -37,27 +37,37 @@ public class Driver {
     }
 
     private void setUpEnvironment() {
-        String defaultPath = Arrays.asList(System.getProperty("user.home"),
-                "sdshell", "tools").stream().collect(Collectors.joining(File.separator));
+        String defaultPath = Arrays.asList(rootDirectory, "tools")
+                .stream().collect(Collectors.joining(File.separator));
 
         Environment env = Environment.getInstance();
-        env.clearVariables();
-        env.setVariable("PATH", defaultPath);
-        env.setVariable("PWD", System.getProperty("user.dir"));
+        String path = env.getVariable("PATH");
+        path = String.join(File.pathSeparator, defaultPath, path);
+        env.setVariable("PATH", path);
     }
 
-    public Driver() {
+    private Driver() {
         messageWriter = new MessageWriter();
         setUpEnvironment();
         setUpSignalHandling();
     }
 
-    public void run() {
+    private void run() {
         Scanner terminalInput = new Scanner(System.in);
         while (true) {
             messageWriter.showGreeting();
-            String s = terminalInput.nextLine();
+            String s = null;
+            try {
+                s = terminalInput.nextLine();
+            } catch (NoSuchElementException e) { // e.g. in case of EOF signal
+                return;
+            }
+
             List<Object> commands = InputParser.parseInput(s);
+
+            if (commands.size() == 0) {
+                continue;
+            }
 
             if (commands.size() == 1) {
                 runSingleCommand(commands.get(0));
@@ -79,7 +89,7 @@ public class Driver {
 
     private void runToolCommand(ToolCommand c) {
         isWaitingForChildProcess = true;
-        ToolCommand.ToolCommandStatus status = c.run();
+        ToolCommand.ToolCommandStatus status = c.runSync();
         isWaitingForChildProcess = false;
         onProcessStatusAppeared(status, c.getCommandName());
     }
@@ -106,7 +116,7 @@ public class Driver {
         }
 
         List<Pair<Process, ToolCommand.ToolCommandStatus>> proc = commands.stream()
-                .map(c -> ((ToolCommand)c).prepareCommandForPiping())
+                .map(c -> ((ToolCommand)c).runAsync())
                 .collect(Collectors.toList());
 
         boolean noErrors = true;

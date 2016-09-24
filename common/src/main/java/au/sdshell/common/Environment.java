@@ -1,27 +1,21 @@
 package au.sdshell.common;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * Created by andy on 9/16/16.
  */
 public class Environment {
     private Map<String, String> variables;
-
     private static final Environment instance = new Environment();
 
     private Environment() {
         variables = new HashMap<>();
         variables.putAll(System.getenv());
-    }
-
-    public void clearVariables() {
-        variables.clear();
     }
 
     public static Environment getInstance() {
@@ -44,25 +38,51 @@ public class Environment {
         variables.put("PWD", newDir.toString());
     }
 
+    private static boolean charIsPartOfName(char c) {
+        return Character.isAlphabetic(c) || c == '_' || Character.isDigit(c);
+    }
+
     public static String substituteVariables(String s) {
-        for (int currentIndex = s.indexOf("$"); currentIndex != -1; currentIndex = s.indexOf("$")) {
-            boolean foundVariable = false;
-            int lastPossibleEnding = s.indexOf("$", currentIndex + 1);
-            if (lastPossibleEnding == -1)
-                lastPossibleEnding = s.length();
+        boolean quoteState = false;
+        boolean doubleQuoteState = false;
+        boolean prevWasEscape = false;
+        for (int i = 0; i < s.length(); i++) {
+            switch (s.charAt(i)) {
+                case '\'':
+                    if (!prevWasEscape && !doubleQuoteState) {
+                        quoteState = !quoteState;
+                    }
+                    break;
+                case '"':
+                    if (!prevWasEscape && !quoteState) {
+                        doubleQuoteState = !doubleQuoteState;
+                    }
+                    break;
+                case '\\':
+                    prevWasEscape = true;
+                    continue;
+                case '$':
+                    if (prevWasEscape || quoteState)
+                        break;
+                    int lastVarChar = i + 1;
+                    if (!charIsPartOfName(s.charAt(lastVarChar)) ||
+                            Character.isDigit(s.charAt(lastVarChar))) {
+                        s = s.replace(s.substring(i, i + 1), "");
+                        break;
+                    }
 
-            for (int i = lastPossibleEnding; i > currentIndex; i--) {
-                String temp = s.substring(currentIndex, i);
-                if (instance.variables.containsKey(temp.substring(1))) {
-                    s = s.replaceFirst(Pattern.quote(temp), instance.getVariable(temp.substring(1)));
-                    foundVariable = true;
-                }
+                    for (lastVarChar++; lastVarChar < s.length() &&
+                            charIsPartOfName(s.charAt(lastVarChar)); lastVarChar++);
+
+                    String temp = s.substring(i, lastVarChar);
+                    if (instance.variables.containsKey(temp.substring(1))) {
+                        s = s.replaceFirst(Pattern.quote(temp), instance.getVariable(temp.substring(1)));
+                    } else {
+                        s = s.replace(s.substring(i, lastVarChar), "");
+                    }
             }
 
-            if (!foundVariable) {
-                s = s.replace(s.substring(currentIndex, lastPossibleEnding), "");
-            }
-
+            prevWasEscape = false;
         }
         return s;
     }

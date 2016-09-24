@@ -1,26 +1,22 @@
 package au.sdshell.tools.cat;
 
 import au.sdshell.common.FileResolver;
-import javafx.util.Pair;
 import se.softhouse.jargo.Argument;
-import se.softhouse.jargo.ArgumentException;
 import se.softhouse.jargo.CommandLineParser;
 import se.softhouse.jargo.ParsedArguments;
 
 import java.io.*;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
-import java.util.function.Function;
 
-import static se.softhouse.jargo.Arguments.*;
+import static se.softhouse.jargo.Arguments.fileArgument;
+import static se.softhouse.jargo.Arguments.optionArgument;
 
 /**
  * Created by andy on 9/19/16.
  */
 public class CatTool {
-    private Argument<?> helpArgument = helpArgument("-h", "--help"); //Will throw when -h is encountered
     private Argument<Boolean> linesNumber = optionArgument("-n", "--number")
             .description("number all output lines").defaultValue(false).build();
 
@@ -35,7 +31,6 @@ public class CatTool {
         try {
             arguments = CommandLineParser
                     .withArguments(linesNumber, fileNameArg)
-                    .andArguments(helpArgument)
                     .parse(args);
         } catch (Exception e) {
             e.printStackTrace();
@@ -68,7 +63,11 @@ public class CatTool {
         } else {
             Scanner sc = new Scanner(System.in);
             for (;;) {
-                System.out.println(sc.next());
+                try {
+                    System.out.println(sc.next());
+                } catch (NoSuchElementException e) {
+                    return;
+                }
             }
         }
 
