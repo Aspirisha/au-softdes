@@ -64,7 +64,7 @@ public class CatTool {
             Scanner sc = new Scanner(System.in);
             for (;;) {
                 try {
-                    System.out.println(sc.next());
+                    System.out.println(sc.nextLine());
                 } catch (NoSuchElementException e) {
                     return;
                 }
