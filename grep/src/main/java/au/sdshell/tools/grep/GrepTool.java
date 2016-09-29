@@ -108,9 +108,7 @@ public class GrepTool {
             for (;;) {
                 try {
                     String s = sc.nextLine();
-                    if (!processString(p, s)) {
-                        System.out.println(s);
-                    }
+                    processString(p, s);
                 } catch (NoSuchElementException e) {
                     return;
                 }
