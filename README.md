@@ -1,15 +1,17 @@
 # Software design hw
 ------
-### Task 1: fake shell
-Fake shell should support following commands:
-* exit
-* pwd
-* cat [FILE]
-* echo 
-* wc [FILE] 
+### Task 2: fake shell upgrade
+Adding grep command to the shell. 
 
-Also pipe redirection should work for these tools.
-Solution lives in task1 branch of this repo.
+The command should be of the form 
+
+grep [FLAGS] PATTERN [FILE] 
+
+Where [FLAGS] may contain any combination of the following flags:
+
+* <b>-i</b> case insensitive search
+* <b>-w</b> match whole words only
+* <b>-A n</b> print n lines after each match
 
 ---
 ####Installation:
@@ -21,4 +23,6 @@ Solution lives in task1 branch of this repo.
 ####Running the shell:
 
 cd $HOME/sdshell/ && java -jar driver.jar
-    
+
+####Tracker for the project
+https://www.pivotaltracker.com/n/projects/1881227
