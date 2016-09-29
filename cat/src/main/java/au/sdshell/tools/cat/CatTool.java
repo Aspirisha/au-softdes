@@ -28,12 +28,14 @@ public class CatTool {
     private File fileName = null;
 
     CatTool(String[] args) {
+        CommandLineParser parser = CommandLineParser
+                .withArguments(linesNumber, fileNameArg);
         try {
-            arguments = CommandLineParser
-                    .withArguments(linesNumber, fileNameArg)
-                    .parse(args);
+            arguments = parser.parse(args);
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Unexpected arguments.");
+            parser.usage().printOn(System.out);
+            System.exit(0);
         }
     }
 
