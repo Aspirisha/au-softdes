@@ -13,10 +13,12 @@ import java.util.StringTokenizer;
 import static se.softhouse.jargo.Arguments.fileArgument;
 
 /**
+ * Counts words, bytes and lines in passed file (if given) or in standard input.
  * Created by andy on 9/22/16.
  */
 public class WcTool {
-    private Argument<File> fileNameArg = fileArgument().description("path to file to show contents").defaultValue(null).build();
+    private Argument<File> fileNameArg = fileArgument()
+            .description("path to file to show contents").defaultValue(null).build();
     private ParsedArguments arguments = null;
     private File fileName = null;
 

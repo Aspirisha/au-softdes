@@ -14,6 +14,9 @@ import static se.softhouse.jargo.Arguments.fileArgument;
 import static se.softhouse.jargo.Arguments.optionArgument;
 
 /**
+ * Tool that can show either given file content (if file name is passed as
+ * input agument) or reprint stdin lines to stdout, if no file specified.
+ * If flag -n is passed, each output line is enumerated.
  * Created by andy on 9/19/16.
  */
 public class CatTool {
@@ -27,7 +30,7 @@ public class CatTool {
     private Boolean needNumbers = false;
     private File fileName = null;
 
-    CatTool(String[] args) {
+    private CatTool(String[] args) {
         CommandLineParser parser = CommandLineParser
                 .withArguments(linesNumber, fileNameArg);
         try {
@@ -72,18 +75,20 @@ public class CatTool {
                 }
             }
         }
-
     }
 
     private void onFileNotFound() {
         System.out.println("cat: " + fileName + ": No such file or directory");
     }
 
+    /**
+     * entry point for cat tool
+     * @param args command line arguments
+     */
     public static void main(String[] args) {
         CatTool runner = new CatTool(args);
         runner.runCommand();
     }
-
 
     private void printLine(String s) {
         if (needNumbers) {

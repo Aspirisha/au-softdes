@@ -11,6 +11,8 @@ import sun.misc.SignalHandler;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -18,11 +20,12 @@ import java.util.Scanner;
 import java.util.stream.Collectors;
 
 /**
+ * Shell main class and entry point.
  * Created by andy on 9/15/16.
  */
 public class Driver {
-    public static final String rootDirectory =  Arrays.asList(System.getProperty("user.home"),
-            "sdshell").stream().collect(Collectors.joining(File.separator));
+    public static final Path rootDirectory = Paths.get(Driver.class.getProtectionDomain()
+            .getCodeSource().getLocation().getPath()).getParent();
 
     private Signal sigInt = new Signal("INT");
     private final SignalHandler oldHandler = Signal.handle(sigInt, SignalHandler.SIG_DFL);
@@ -37,8 +40,7 @@ public class Driver {
     }
 
     private void setUpEnvironment() {
-        String defaultPath = Arrays.asList(rootDirectory, "tools")
-                .stream().collect(Collectors.joining(File.separator));
+        String defaultPath = rootDirectory.resolve("tools").toString();
 
         Environment env = Environment.getInstance();
         String path = env.getVariable("PATH");

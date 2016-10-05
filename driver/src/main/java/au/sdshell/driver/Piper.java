@@ -1,6 +1,8 @@
 package au.sdshell.driver;
 
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Piper implements java.lang.Runnable {
 
@@ -35,10 +37,14 @@ public class Piper implements java.lang.Runnable {
             try {
                 input.close();
             } catch (Exception e) {
+                System.out.println("Broken pipe");
+                Logger.getGlobal().log(Level.INFO, e.getMessage());
             }
             try {
                 output.close();
             } catch (Exception e) {
+                System.out.println("Broken pipe");
+                Logger.getGlobal().log(Level.INFO, e.getMessage());
             }
         }
     }

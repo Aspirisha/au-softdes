@@ -1,5 +1,6 @@
 import org.apache.tools.ant.filters.*
 
+import java.nio.file.Paths
 import java.util.stream.Collectors
 
 import static java.lang.String.valueOf
@@ -10,8 +11,9 @@ allprojects {
     version = '1.0'
 }
 
-def pathToDriverParts = [System.getProperty("user.home"), "sdshell"]
-def pathToToolsParts = [System.getProperty("user.home"), "sdshell", "tools"]
+def pathToDriverParts = ["$rootDir", "build", "target"]
+def pathToToolsParts = ["$rootDir", "build", "target", "tools"]
+
 project.ext {
     toolsDir = pathToToolsParts.stream().collect(joining(File.separator))
     driverDir = pathToDriverParts.stream().collect(joining(File.separator))
@@ -32,6 +34,10 @@ configure(subprojects.findAll {it.name != 'common'}) {
     }
 }
 
+task createTargetDir {
+    Paths.get(rootProject.toolsDir).toFile().mkdirs()
+}
+
 // driver is not a tool!
 def tools = subprojects
 tools.removeAll { it.name.contains('driver') }
@@ -39,7 +45,10 @@ def toolTaskGetter = { it.getTasksByName('fatJar', false) }
 def toolsJars = tools.stream().map(toolTaskGetter).collect(Collectors.toList())
 def registerFile = new File((String)rootProject.driverDir, ".tools")
 
-task copyTools(type: Copy, dependsOn: tools.jar) {
+task copyTools(type: Copy ) {
+    dependsOn ':createTargetDir'
+    dependsOn tools.jar
+
     from(toolsJars)
     into project.file(rootProject.toolsDir)
     rename { String fileName ->
@@ -47,6 +56,7 @@ task copyTools(type: Copy, dependsOn: tools.jar) {
 }
 
 task registerTools {
+    dependsOn ':createTargetDir'
     registerFile.withWriter {w -> w << ""}
     configure(subprojects.findAll {it.name != 'common' && it.name != 'driver'}) {
         registerFile.withWriterAppend { w ->

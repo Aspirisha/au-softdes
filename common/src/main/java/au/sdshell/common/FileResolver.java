@@ -10,6 +10,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
+ * Finds file absolute path by given name.
+ * Search is performed relative to current directory in case file name is relative path
+ * (see {@link Environment::getCurrentDir}),
+ * in path, in case file name is simple name (doesn't contain file separators),
+ * or in filesystem in case file name is absolute.
  * Created by andy on 9/21/16.
  */
 public class FileResolver {

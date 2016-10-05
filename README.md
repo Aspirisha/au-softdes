@@ -16,9 +16,9 @@ Solution lives in task1 branch of this repo.
 
 1. Clone repository
 2. Run ```gradle deploy``` 
-3. Now shell is installed into $HOME/sdshell/ directory. 
+3. Now shell is installed into build/target directory. 
 
 ####Running the shell:
 
-cd $HOME/sdshell/ && java -jar driver.jar
+cd build/target && java -jar driver.jar
     

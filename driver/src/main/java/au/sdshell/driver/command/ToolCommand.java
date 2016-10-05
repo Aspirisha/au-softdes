@@ -11,11 +11,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
+ * Represents shell command which calls external tool
  * Created by andy on 9/16/16.
  */
 public class ToolCommand {
-    private static final String toolsRegisterFile = Arrays.asList(Driver.rootDirectory, ".tools")
-            .stream().collect(Collectors.joining(File.separator));
+    private static final String toolsRegisterFile = String.join(
+            File.separator, Driver.rootDirectory.toString(), ".tools");
+
     private static Set<String> registeredCommands;
 
     static {
