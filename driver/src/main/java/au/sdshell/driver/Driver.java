@@ -2,6 +2,7 @@ package au.sdshell.driver;
 
 import au.sdshell.common.Environment;
 import au.sdshell.driver.command.AssignCommand;
+import au.sdshell.driver.command.CDCommand;
 import au.sdshell.driver.command.ExitCommand;
 import au.sdshell.driver.command.ToolCommand;
 import javafx.util.Pair;
@@ -82,6 +83,8 @@ public class Driver {
             ((ExitCommand) c).run();
         } else if (c instanceof AssignCommand) {
             ((AssignCommand) c).run();
+        } else if (c instanceof CDCommand) {
+            ((CDCommand) c).run();
         } else {
             runToolCommand((ToolCommand) c);
         }

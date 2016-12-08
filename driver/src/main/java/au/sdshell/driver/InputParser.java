@@ -2,6 +2,7 @@ package au.sdshell.driver;
 
 import au.sdshell.common.Environment;
 import au.sdshell.driver.command.AssignCommand;
+import au.sdshell.driver.command.CDCommand;
 import au.sdshell.driver.command.ExitCommand;
 import au.sdshell.driver.command.ToolCommand;
 import edu.rice.cs.util.ArgumentTokenizer;
@@ -63,7 +64,13 @@ public class InputParser {
         }
 
         if (command != null) {
-            commands.add(new ToolCommand(command, currentArgs));
+            if (command.equals("cd")) {
+                commands.add(new CDCommand(
+                        currentArgs.isEmpty() ? "" : currentArgs.getFirst()
+                ));
+            } else {
+                commands.add(new ToolCommand(command, currentArgs));
+            }
         }
         return commands;
     }
