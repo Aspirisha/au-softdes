@@ -3,4 +3,5 @@ include ':pwd'
 include ':common'
 include 'wc'
 include 'grep'
+include 'ls'
 
