@@ -7,11 +7,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Created by: Egor Gorbunov
- * Date: 12/8/16
- * Email: egor-mailbox@ya.com
+ * Shell command, which changes current working directory, which is passed
+ * as first argument
  */
-
 public class CDCommand {
     private final String distUserDir;
 
@@ -22,7 +20,6 @@ public class CDCommand {
     public void run() {
         String newDistDir = Environment.substituteVariables(distUserDir);
         Environment env = Environment.getInstance();
-
         Path newPWD = env.getCurrentDir().resolve(newDistDir).normalize();
         if (!Files.exists(newPWD) || !Files.isDirectory(newPWD)) {
             System.out.println("No such directory");
