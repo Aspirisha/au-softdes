@@ -9,8 +9,14 @@ class CustomIpEditor : public QFrame
     Q_OBJECT
 public:
     explicit CustomIpEditor(QWidget *parent = 0);
-
+    bool isFilled() const;
     virtual ~CustomIpEditor() {}
+signals:
+    void fillChanged(bool filled);
+protected slots:
+    void onTextEdited(int i, const QString &s);
+private:
+    char filledBitMask;
 };
 
 

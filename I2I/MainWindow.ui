@@ -161,6 +161,9 @@
      </layout>
     </widget>
     <widget class="QPushButton" name="connect">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
      <property name="geometry">
       <rect>
        <x>30</x>
@@ -222,8 +225,28 @@
    <extends>QFrame</extends>
    <header location="global">CustomIpEditor.h</header>
    <container>1</container>
+   <slots>
+    <signal>fillChanged(bool)</signal>
+   </slots>
   </customwidget>
  </customwidgets>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>peerIp</sender>
+   <signal>fillChanged(bool)</signal>
+   <receiver>connect</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>155</x>
+     <y>332</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>169</x>
+     <y>421</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

@@ -101,7 +101,7 @@ QLineEdit* makeIpSpliter() {
 }
 
 CustomIpEditor::CustomIpEditor(QWidget *parent) :
-    QFrame(parent)
+    QFrame(parent), filledBitMask(0)
 {
     setContentsMargins(0, 0, 0, 0);
     setStyleSheet("QFrame { background-color: white;  border: 1px solid black; border-radius: 2px; }");
@@ -118,18 +118,35 @@ CustomIpEditor::CustomIpEditor(QWidget *parent) :
     mainLayout->setSpacing(0);
     setLayout(mainLayout);
 
-    for (linesIterator = lines.begin(); linesIterator != lines.end(); ++linesIterator) {
-        makeCommonStyle(*linesIterator);
-        mainLayout->addWidget(*linesIterator);
+    for (size_t i = 0; i < lines.size(); i++) {
+        auto line = lines.at(i);
+        makeCommonStyle(line);
+        mainLayout->addWidget(line);
 
-        if (*linesIterator != lines.last()) {
-            connect(*linesIterator, &CustomLineEdit::jumpForward,
-                    *(linesIterator+1), &CustomLineEdit::jumpIn);
+        if (i != lines.size() - 1) {
+            connect(line, &CustomLineEdit::jumpForward,
+                    lines.at(i + 1), &CustomLineEdit::jumpIn);
             mainLayout->addWidget(makeIpSpliter());
         }
-        if (*linesIterator != lines.first()) {
-            connect(*linesIterator, &CustomLineEdit::jumpBackward,
-                    *(linesIterator-1), &CustomLineEdit::jumpIn);
+        if (i != 0) {
+            connect(line, &CustomLineEdit::jumpBackward,
+                    lines.at(i - 1), &CustomLineEdit::jumpIn);
         }
+
+        connect(line, &CustomLineEdit::textEdited, [this, i](const QString &s) {
+            this->onTextEdited(i, s);
+        });
     }
+}
+
+void CustomIpEditor::onTextEdited(int i, const QString &s)
+{
+    char oldMask = filledBitMask;
+    filledBitMask &= ~(1 << i);
+    filledBitMask |= ((s.size() != 0) << i);
+
+    if (filledBitMask != oldMask && filledBitMask == 0xf)
+        emit fillChanged(true);
+    else if (filledBitMask != oldMask && oldMask == 0xf)
+        emit fillChanged(false);
 }
