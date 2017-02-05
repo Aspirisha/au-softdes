@@ -26,7 +26,7 @@ LoginDialog::~LoginDialog() {
 }
 
 void LoginDialog::tryLogin() {
-    QTcpServer *tcpServer = new QTcpServer();
+    QSharedPointer<QTcpServer> tcpServer(new QTcpServer());
     int port = ui->port->value();
     QHostAddress address(ui->ipaddress->currentText());
     if (!tcpServer->listen(address, port)) {
@@ -36,7 +36,7 @@ void LoginDialog::tryLogin() {
         qDebug() << QObject::tr("Server started!");
         hide();
         QString login = ui->login->text();
-        auto *myUser = new i2imodel::User(login, address.toIPv4Address(), port);
+        QSharedPointer<i2imodel::User> myUser(new i2imodel::User(login, address.toIPv4Address(), port));
         emit loggedIn(tcpServer, myUser);
     }
 }

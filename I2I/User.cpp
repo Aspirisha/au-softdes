@@ -4,27 +4,33 @@ namespace i2imodel {
 
 QtJson::JsonObject User::toJson() const
 {
-    QtJson::JsonObject serialized;
-    serialized["login"] = login;
-    serialized["ip"] = ip;
-    serialized["port"] = port;
-    return serialized;
+    QtJson::JsonObject json;
+
+    json["login"] = login;
+    json["ip"] = ip;
+    json["port"] = port;
+    return json;
 }
 
-User *User::fromJson(const QString &json)
+QByteArray User::serialize() const
+{
+    return QtJson::serialize(toJson());
+}
+
+QSharedPointer<User> User::fromJson(const QString &json)
 {
     bool ok;
     QtJson::JsonObject result = QtJson::parse(json, ok).toMap();
     if(!ok) {
         qDebug("An error occurred during parsing");
-        return nullptr;
+        return {};
     }
 
     return fromJson(result);
 }
 
-User *User::fromJson(const QtJson::JsonObject &obj)
+QSharedPointer<User> User::fromJson(const QMap<QString, QVariant> &obj)
 {
-    return new User(obj["login"].toString(), obj["ip"].toUInt(), obj["port"].toUInt());
+    return QSharedPointer<User>{new User(obj["login"].toString(), obj["ip"].toUInt(), obj["port"].toUInt())};
 }
 }

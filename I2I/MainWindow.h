@@ -3,11 +3,17 @@
 
 #include <QMainWindow>
 #include <QTcpServer>
+#include <QListWidgetItem>
 #include "User.h"
 #include "ChatController.h"
 #include <log4qt/logger.h>
 namespace Ui {
 class MainWindow;
+}
+
+namespace i2inet {
+class NetworkManager;
+class BroadcastMessage;
 }
 
 class MainWindow : public QMainWindow
@@ -19,14 +25,25 @@ public:
     ~MainWindow();
 
 private slots:
-    void onLoggedIn(QTcpServer *server, i2imodel::User *user);
-    void onConnectClicked();
-    void onPeerConnection();
+    void onLoggedIn(QSharedPointer<QTcpServer> server, QSharedPointer<i2imodel::User> user);
+    void onBroadcastMessage(const i2inet::BroadcastMessage&);
+    void onCurrentPeerChanged(QListWidgetItem*, QListWidgetItem*);
+    void onGreet(QSharedPointer<i2imodel::Chat>);
+    void onTextChanged();
+    void onSendClicked();
+    void onMessageArrived(const i2imodel::Message& msg);
 private:
+    void showChat();
+
+
     Ui::MainWindow *ui;
-    QTcpServer *server;
-    i2imodel::User *user;
-    QList<ChatController*> chats;
+    i2imodel::userid_t currentPeer;
+    QMap<i2imodel::userid_t, QSharedPointer<i2imodel::Chat>> chats;
+    QMap<i2imodel::userid_t, QString> loginById;
+    QSharedPointer<i2inet::NetworkManager> netManager;
+    QSharedPointer<QTcpServer> server;
+    QSharedPointer<i2imodel::User> user;
+    QMap<i2imodel::userid_t, QListWidgetItem*> userToWidget;
 };
 
 

@@ -13,6 +13,9 @@ public:
     QDateTime getDate() const;
     QString getText() const;
     userid_t getAuthor() const;
+
+    QtJson::JsonObject toJson() const;
+    static Message fromJson(const QMap<QString, QVariant> & json);
 private:
     QString text;
     QDateTime date;

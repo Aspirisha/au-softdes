@@ -28,9 +28,12 @@ int main(int argc, char *argv[]) {
     LoginDialog loginDlg;
     MainWindow mainWindow;
 
-    setupLogger(".i2i.log");
-    QObject::connect(&loginDlg, SIGNAL(loggedIn(QTcpServer*, i2imodel::User*)),
-                     &mainWindow, SLOT(onLoggedIn(QTcpServer*, i2imodel::User*)));
+    if (argc == 1)
+        setupLogger(".i2i.log");
+    else
+        setupLogger(argv[1]);
+    QObject::connect(&loginDlg, SIGNAL(loggedIn(QSharedPointer<QTcpServer>, QSharedPointer<i2imodel::User>)),
+                     &mainWindow, SLOT(onLoggedIn(QSharedPointer<QTcpServer>, QSharedPointer<i2imodel::User>)));
     loginDlg.show();
     return a.exec();
 }

@@ -2,6 +2,7 @@
 #define USER_H
 
 #include <QHostAddress>
+#include <QSharedPointer>
 #include "ModelCommon.h"
 #include "qt-json/json.h"
 
@@ -20,9 +21,12 @@ public:
 
     QString getLogin() const override { return login; }
     userid_t getId() const override { return (static_cast<userid_t>(ip) << 16) + port; }
+    quint32 getIp() const {return ip; }
+    quint16 getPort() const {return port; }
     QtJson::JsonObject toJson() const;
-    static User* fromJson(const QString &obj);
-    static User* fromJson(const QtJson::JsonObject &obj);
+    QByteArray serialize() const;
+    static QSharedPointer<User> fromJson(const QString &obj);
+    static QSharedPointer<User> fromJson(const QMap<QString, QVariant> &obj);
 private:
     const QString login;
     const quint32 ip;

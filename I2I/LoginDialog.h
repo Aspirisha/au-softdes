@@ -17,7 +17,7 @@ public:
     explicit LoginDialog(QWidget *parent = 0);
     ~LoginDialog();
 signals:
-    void loggedIn(QTcpServer *server, i2imodel::User *user);
+    void loggedIn(QSharedPointer<QTcpServer> server, QSharedPointer<i2imodel::User> user);
 public slots:
     void tryLogin();
     void onLoginChanged(QString);

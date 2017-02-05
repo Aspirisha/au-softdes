@@ -23,7 +23,8 @@ SOURCES += main.cpp \
     ChatController.cpp \
     User.cpp \
     Message.cpp \
-    CustomIpEditor.cpp
+    CustomIpEditor.cpp \
+    NetworkManager.cpp
 
 HEADERS  += \
     LoginDialog.h \
@@ -34,7 +35,8 @@ HEADERS  += \
     Message.h \
     Chat.h \
     ChatController.h \
-    CustomIpEditor.h
+    CustomIpEditor.h \
+    NetworkManager.h
 
 FORMS    += \
     LoginDialog.ui \

@@ -9,11 +9,17 @@ namespace i2imodel {
 class Chat
 {
 public:
-    Chat(User *peer) : peer(peer) {}
-    void addMessage(const Message& m);
+    Chat(QSharedPointer<User> peer) : peer(peer) {}
+    void addMessage(const Message& m) { messages.append(m); }
     QList<Message> getMessages() const { return messages; }
+    userid_t getPeerId() const { return peer->getId(); }
+    QString getPeerLogin() const {return peer->getLogin(); }
+    ~Chat() {
+        qDebug() << "I was called!\n";
+    }
+
 private:
-    User *peer;
+    QSharedPointer<User> peer;
     QList<Message> messages;
 };
 }
