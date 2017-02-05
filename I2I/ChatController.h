@@ -35,6 +35,7 @@ private:
     void sendDisconnect();
     void sendGreeting();
     bool sendData(const QByteArray &data);
+    QByteArray messageToRequestBytes(const i2imodel::Message&);
 
     static const size_t CHECK_INACTIVITY_DELTA_SECONDS = 300;
     QTcpSocket *client;
@@ -42,8 +43,8 @@ private:
     QSharedPointer<i2imodel::Chat> chat;
     qint64 lastInteractionTimestamp;
 
-    QList<QByteArray> pendingMessages;
-
+    QList<i2imodel::Message> pendingMessages;
+    QList<i2imodel::Message> messagesNotWrittentToChat;
     // data being received
     QByteArray buffer;
     i2imodel::message_size_t messageSize;

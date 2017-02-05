@@ -32,10 +32,7 @@ void ChatController::resetClient(QTcpSocket *client)
 void ChatController::sendMessage(QString text)
 {
     i2imodel::Message msg(text, QDateTime::currentDateTime(), ownUser->getId());
-    QtJson::JsonObject m;
-    m["type"] = int(RequestType::MESSAGE);
-    m["message"] = msg.toJson();
-    QByteArray data = QtJson::serialize(m);
+
     if (client == nullptr) {
         // establish new connection
         logger()->info("socket was freed due to long inactivity of the chat. Creating new socket...");
@@ -43,8 +40,15 @@ void ChatController::sendMessage(QString text)
         return;
     }
 
+    QByteArray data = messageToRequestBytes(msg);
+
+    if (chat) {
+        chat->addMessage(msg);
+    } else {
+        messagesNotWrittentToChat.append(msg);
+    }
     if (!sendData(data)) {
-        pendingMessages.append(data);
+        pendingMessages.append(msg);
     }
 }
 
@@ -98,6 +102,10 @@ void ChatController::onNewData()
         case RequestType::GREET: {
             auto peer = i2imodel::User::fromJson(request["user"].toMap());
             chat.reset(new i2imodel::Chat(peer));
+            for (auto &msg : messagesNotWrittentToChat) {
+                chat->addMessage(msg);
+            }
+            messagesNotWrittentToChat.clear();
             logger()->info(QString("Received greeting from user %1").arg(peer->getLogin()));
             emit peerGreeted(this);
             break;
@@ -123,7 +131,7 @@ void ChatController::onSocketConnected()
     logger()->info("Socket connected. Sending greeting");
     sendGreeting();
     while (!pendingMessages.empty()) {
-        QByteArray msg = pendingMessages.front();
+        QByteArray msg = messageToRequestBytes(pendingMessages.front());
         logger()->info("Sending pending message");
         if (!sendData(msg)) {
             break;
@@ -165,4 +173,12 @@ bool ChatController::sendData(const QByteArray &data)
     }
 
     return false;
+}
+
+QByteArray ChatController::messageToRequestBytes(const i2imodel::Message &msg)
+{
+    QtJson::JsonObject m;
+    m["type"] = int(RequestType::MESSAGE);
+    m["message"] = msg.toJson();
+    return QtJson::serialize(m);
 }

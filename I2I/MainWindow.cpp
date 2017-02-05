@@ -98,6 +98,8 @@ void MainWindow::onSendClicked()
 {
     QString text = ui->message->toPlainText();
     ui->message->clear();
+    writeLogin(user->getId());
+    ui->chat->insertPlainText(QString("%1").arg(text));
     logger()->info("Send message clicked with text: " + text);
     netManager->sendMessage(currentPeer, text);
 }
@@ -110,7 +112,8 @@ void MainWindow::onMessageArrived(const i2imodel::Message& msg)
         logger()->info("No printing since peer is not current");
         return;
     }
-    ui->chat->append(QString("%1>   %2\n").arg(loginById[msg.getAuthor()]).arg(msg.getText()));
+    writeLogin(msg.getAuthor());
+    ui->chat->insertPlainText(QString("%1").arg(msg.getText()));
 }
 
 void MainWindow::showChat()
@@ -121,8 +124,29 @@ void MainWindow::showChat()
     auto chat = chats.find(currentPeer);
     if (chat == chats.end())
         return;
+
+
+
     for (auto msg: (*chat)->getMessages()) {
-        ui->chat->append(QString("%1>   %2\n").arg(loginById[msg.getAuthor()]).arg(msg.getText()));
+        writeLogin(msg.getAuthor());
+
+        ui->chat->insertPlainText(QString("%1").arg(msg.getText()));
     }
+}
+
+void MainWindow::writeLogin(i2imodel::userid_t id)
+{
+    static int fw = ui->chat->fontWeight();
+    static QColor tc = ui->chat->textColor();
+
+    QColor idColor = id == user->getId() ? QColor("blue") : QColor("red");
+    ui->chat->setFontWeight(QFont::DemiBold);
+    ui->chat->setTextColor(idColor);
+
+    ui->chat->append(QString("%1>  ").arg(loginById[id]));
+
+    ui->chat->moveCursor(QTextCursor::End);
+    ui->chat->setFontWeight(fw);
+    ui->chat->setTextColor(tc);
 }
 

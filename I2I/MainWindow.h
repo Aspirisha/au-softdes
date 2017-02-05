@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QTcpServer>
 #include <QListWidgetItem>
+#include <QColor>
 #include "User.h"
 #include "ChatController.h"
 #include <log4qt/logger.h>
@@ -34,7 +35,7 @@ private slots:
     void onMessageArrived(const i2imodel::Message& msg);
 private:
     void showChat();
-
+    void writeLogin(i2imodel::userid_t id);
 
     Ui::MainWindow *ui;
     i2imodel::userid_t currentPeer;
