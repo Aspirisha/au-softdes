@@ -19,7 +19,8 @@ SOURCES += main.cpp \
     qt-json/json.cpp \
     ChatController.cpp \
     User.cpp \
-    Message.cpp
+    Message.cpp \
+    CustomIpEditor.cpp
 
 HEADERS  += \
     LoginDialog.h \
@@ -29,7 +30,8 @@ HEADERS  += \
     User.h \
     Message.h \
     Chat.h \
-    ChatController.h
+    ChatController.h \
+    CustomIpEditor.h
 
 FORMS    += \
     LoginDialog.ui \

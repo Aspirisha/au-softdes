@@ -80,7 +80,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QListView" name="peers"/>
+      <widget class="QListWidget" name="peers"/>
      </item>
     </layout>
    </widget>
@@ -220,7 +220,7 @@
   <customwidget>
    <class>CustomIpEditor</class>
    <extends>QFrame</extends>
-   <header location="global">MainWindow.h</header>
+   <header location="global">CustomIpEditor.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
