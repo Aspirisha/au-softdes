@@ -248,5 +248,24 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>connect</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onConnectClicked()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>108</x>
+     <y>422</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>17</x>
+     <y>36</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
+ <slots>
+  <slot>onConnectClicked()</slot>
+ </slots>
 </ui>

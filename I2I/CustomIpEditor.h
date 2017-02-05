@@ -10,6 +10,7 @@ class CustomIpEditor : public QFrame
 public:
     explicit CustomIpEditor(QWidget *parent = 0);
     bool isFilled() const;
+    QString getText() const;
     virtual ~CustomIpEditor() {}
 signals:
     void fillChanged(bool filled);

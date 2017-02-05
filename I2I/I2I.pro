@@ -13,6 +13,9 @@ TEMPLATE = app
 
 QMAKE_CXXFLAGS += -std=c++11
 
+# logger
+include(log4qt/src/log4qt/log4qt.pri)
+
 SOURCES += main.cpp \
     LoginDialog.cpp \
     MainWindow.cpp \

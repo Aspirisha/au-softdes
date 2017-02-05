@@ -80,7 +80,6 @@ void CustomLineEdit::mouseReleaseEvent(QMouseEvent *event)
     QLineEdit::mouseReleaseEvent(event);
 }
 
-//=============================================================================
 void makeCommonStyle(QLineEdit* line) {
     line->setContentsMargins(0, 0, 0, 0);
     line->setAlignment(Qt::AlignCenter);
@@ -137,6 +136,17 @@ CustomIpEditor::CustomIpEditor(QWidget *parent) :
             this->onTextEdited(i, s);
         });
     }
+}
+
+QString CustomIpEditor::getText() const
+{
+    QString result;
+    for (QObject *c : children()) {
+        QLineEdit *edit = dynamic_cast<QLineEdit*>(c);
+        if (!edit) continue;
+        result += edit->text();
+    }
+    return result;
 }
 
 void CustomIpEditor::onTextEdited(int i, const QString &s)

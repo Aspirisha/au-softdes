@@ -1,3 +1,6 @@
 [submodule "I2I/qt-json"]
 	path = I2I/qt-json
 	url = https://github.com/qt-json/qt-json.git
+[submodule "I2I/log4qt"]
+	path = I2I/log4qt
+	url = https://github.com/devbean/log4qt.git
