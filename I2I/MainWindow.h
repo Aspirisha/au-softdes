@@ -29,22 +29,28 @@ private slots:
     void onLoggedIn(QSharedPointer<QTcpServer> server, QSharedPointer<i2imodel::User> user);
     void onBroadcastMessage(const i2inet::BroadcastMessage&);
     void onCurrentPeerChanged(QListWidgetItem*, QListWidgetItem*);
-    void onGreet(QSharedPointer<i2imodel::Chat>);
+    void onGreet(QSharedPointer<const i2imodel::Chat>);
     void onTextChanged();
     void onSendClicked();
+    void onIpFilled(bool);
     void onMessageArrived(const i2imodel::Message& msg);
+    void onBlinkTimer();
 private:
     void showChat();
+    void addUserAsAlive(QString login, i2imodel::userid_t id);
     void writeLogin(i2imodel::userid_t id);
 
     Ui::MainWindow *ui;
     i2imodel::userid_t currentPeer;
-    QMap<i2imodel::userid_t, QSharedPointer<i2imodel::Chat>> chats;
+    QMap<i2imodel::userid_t, QSharedPointer<const i2imodel::Chat>> chats;
+    QSet<i2imodel::userid_t> chatsWithNewMessages;
     QMap<i2imodel::userid_t, QString> loginById;
     QSharedPointer<i2inet::NetworkManager> netManager;
     QSharedPointer<QTcpServer> server;
     QSharedPointer<i2imodel::User> user;
     QMap<i2imodel::userid_t, QListWidgetItem*> userToWidget;
+
+    QTimer blinkNewMessagesTimer;
 };
 
 

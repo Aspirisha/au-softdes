@@ -37,7 +37,7 @@ void NetworkManager::sendMessage(i2imodel::userid_t currentPeer, QString text)
         logger()->info(QString("Establishing connection with peer server: trying ip %1 and port %2").arg(ip).arg(port));
         client->connectToHost(QHostAddress(ip), port);
 
-        createChatController(client)->sendMessage(text);
+        createChatController(client, false)->sendMessage(text);
         //activeChats.insert(chat->getChatId(), chat); // hmm
     } else {
         (*chat)->sendMessage(text);
@@ -76,15 +76,17 @@ void NetworkManager::onPeerConnection()
     logger()->info("Somebody is trying to connect");
     QTcpSocket *client = this->server->nextPendingConnection();
 
-    createChatController(client);
+    QObject::connect(client, SIGNAL(readyRead()), this, SLOT(protocolDetector()));
 }
 
-void NetworkManager::onPeerGreet(ChatController* chat)
+void NetworkManager::onPeerGreet(AbstractChatController* chat)
 {
     auto res = activeChats.find(chat->getChatId());
     if (res != activeChats.end())
         delete res.value();
     activeChats.insert(chat->getChatId(), chat);
+    AbstractChatController* c = dynamic_cast<AbstractChatController*>(sender());
+    emit peerGreeted(c->getChat());
 }
 
 void NetworkManager::onPeerDisconnect(ChatController *chat)
@@ -92,6 +94,32 @@ void NetworkManager::onPeerDisconnect(ChatController *chat)
     activeChats.remove(chat->getChatId());
 }
 
+void NetworkManager::removeEdgarChat()
+{
+    EdgarChatController *chat = dynamic_cast<EdgarChatController*>(sender());
+    delete chat;
+}
+
+void NetworkManager::protocolDetector()
+{
+    QTcpSocket *client = dynamic_cast<QTcpSocket*>(sender());
+    if (client->bytesAvailable() < AbstractChatController::PROTOCOL_ID_SIZE)
+        return;
+
+    QObject::disconnect(client, SIGNAL(readyRead()), this, SLOT(protocolDetector()));
+
+    unsigned char data[2];
+    client->read((char*)data, 2);
+    quint16 protocolID = (quint16(data[0]) << 8) + data[1];
+
+    if (protocolID == 0xFFFF) {
+        logger()->info("Creating regular chat");
+        createChatController(client, true);
+    } else {
+        logger()->info("Creating chat with Edgar client");
+        createEdgarChat(client, protocolID); // tODO connect onmessage with chat deleter
+    }
+}
 
 void NetworkManager::sendAliveMessage() const
 {
@@ -101,19 +129,33 @@ void NetworkManager::sendAliveMessage() const
                           QHostAddress::Broadcast, port);
 }
 
-ChatController* NetworkManager::createChatController(QTcpSocket *client)
+
+void NetworkManager::setupCommonControllerSignals(AbstractChatController *chat)
 {
-    ChatController* chat = new ChatController(client, ownUser);
-    QObject::connect(chat, SIGNAL(peerGreeted(ChatController*)), this, SLOT(onPeerGreet(ChatController*)));
-    QObject::connect(chat, &ChatController::peerGreeted,
-                     [this](ChatController* c) {
-        emit peerGreeted(c->getChat());
-    });
+    QObject::connect(chat, SIGNAL(peerGreeted(AbstractChatController*)), this, SLOT(onPeerGreet(AbstractChatController*)));
+    QObject::connect(chat, SIGNAL(messageReceived(i2imodel::Message)), this, SIGNAL(messageReceived(i2imodel::Message)));
+}
+
+
+ChatController* NetworkManager::createChatController(QTcpSocket *client, bool iAmServer)
+{
+    ChatController* chat = new ChatController(client, ownUser, iAmServer);
+
     QObject::connect(chat, &ChatController::peerClosedConnection, [this, chat]() {
         this->onPeerDisconnect(chat);
     });
-    QObject::connect(chat, SIGNAL(messageReceived(i2imodel::Message)), this, SIGNAL(messageReceived(i2imodel::Message)));
+    setupCommonControllerSignals(chat);
 
+    if (client->bytesAvailable())
+        chat->onNewData();
+    return chat;
+}
+
+EdgarChatController *NetworkManager::createEdgarChat(QTcpSocket *client, quint16 loginSize)
+{
+    EdgarChatController* chat = new EdgarChatController(client, ownUser, loginSize);
+    setupCommonControllerSignals(chat);
+    QObject::connect(chat, SIGNAL(messageReceived(i2imodel::Message)), this, SLOT(removeEdgarChat()));
     return chat;
 }
 

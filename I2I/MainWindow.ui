@@ -65,7 +65,7 @@
       <x>20</x>
       <y>20</y>
       <width>241</width>
-      <height>491</height>
+      <height>391</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
@@ -83,6 +83,54 @@
       <widget class="QListWidget" name="peers"/>
      </item>
     </layout>
+   </widget>
+   <widget class="CustomIpEditor" name="ip">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>440</y>
+      <width>161</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::StyledPanel</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Raised</enum>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="spinBox">
+    <property name="geometry">
+     <rect>
+      <x>197</x>
+      <y>440</y>
+      <width>81</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="minimum">
+     <number>1025</number>
+    </property>
+    <property name="maximum">
+     <number>65535</number>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="connect">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>90</x>
+      <y>500</y>
+      <width>99</width>
+      <height>27</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Connect</string>
+    </property>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -121,6 +169,17 @@
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CustomIpEditor</class>
+   <extends>QFrame</extends>
+   <header>CustomIpEditor.h</header>
+   <container>1</container>
+   <slots>
+    <signal>fillChanged(bool)</signal>
+   </slots>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
   <connection>
@@ -130,8 +189,8 @@
    <slot>onCurrentPeerChanged(QListWidgetItem*,QListWidgetItem*)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>130</x>
-     <y>464</y>
+     <x>131</x>
+     <y>434</y>
     </hint>
     <hint type="destinationlabel">
      <x>176</x>
@@ -171,11 +230,28 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>ip</sender>
+   <signal>fillChanged(bool)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onIpFilled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>82</x>
+     <y>488</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>57</x>
+     <y>554</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>onConnectClicked()</slot>
   <slot>onCurrentPeerChanged(QListWidgetItem*,QListWidgetItem*)</slot>
   <slot>onTextChanged()</slot>
   <slot>onSendClicked()</slot>
+  <slot>onIpFilled(bool)</slot>
  </slots>
 </ui>

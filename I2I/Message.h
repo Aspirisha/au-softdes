@@ -9,7 +9,8 @@ namespace i2imodel {
 class Message
 {
 public:
-    Message(QString text, QDateTime date, userid_t authorId) : text(text), date(date), authorId(authorId) {}
+    Message(QString text, QDateTime date, userid_t authorId)
+        : text(text), date(date), authorId(authorId) {}
     QDateTime getDate() const;
     QString getText() const;
     userid_t getAuthor() const;

@@ -1,10 +1,13 @@
 #include <QDataStream>
 #include "ChatController.h"
 
-ChatController::ChatController(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser)
-    : client(nullptr), ownUser(ownUser), messageSize(0), timer() {
+QMap<i2imodel::userid_t, QSharedPointer<i2imodel::Chat>> AbstractChatController::chats;
+
+
+ChatController::ChatController(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, bool iAmServer)
+    : AbstractChatController(client, ownUser), messageSize(0), iAmServer(iAmServer) {
     lastInteractionTimestamp = QDateTime::currentDateTime().toMSecsSinceEpoch();
-    QObject::connect(client, &QTcpSocket::readyRead, this, &ChatController::onNewData);
+
     QObject::connect(&timer, SIGNAL(timeout()), this, SLOT(checkInactivity()));
 
     resetClient(client);
@@ -15,10 +18,6 @@ ChatController::ChatController(QTcpSocket *client, QSharedPointer<i2imodel::User
 
 void ChatController::resetClient(QTcpSocket *client)
 {
-    if (this->client != nullptr) {
-        return;
-    }
-
     this->client = client;
     if (client) {
         if (client->state() != QTcpSocket::ConnectedState) {
@@ -42,8 +41,9 @@ void ChatController::sendMessage(QString text)
 
     QByteArray data = messageToRequestBytes(msg);
 
-    if (chat) {
-        chat->addMessage(msg);
+    if (chatId != 0) {
+        Q_ASSERT(chats.contains(chatId));
+        chats[chatId]->addMessage(msg);
     } else {
         messagesNotWrittentToChat.append(msg);
     }
@@ -101,9 +101,10 @@ void ChatController::onNewData()
         switch (type) {
         case RequestType::GREET: {
             auto peer = i2imodel::User::fromJson(request["user"].toMap());
-            chat.reset(new i2imodel::Chat(peer));
+            chatId = peer->getId();
+            chats[chatId].reset(new i2imodel::Chat(peer));
             for (auto &msg : messagesNotWrittentToChat) {
-                chat->addMessage(msg);
+                chats[chatId]->addMessage(msg);
             }
             messagesNotWrittentToChat.clear();
             logger()->info(QString("Received greeting from user %1").arg(peer->getLogin()));
@@ -117,7 +118,7 @@ void ChatController::onNewData()
         case RequestType::MESSAGE: {
             i2imodel::Message msg = i2imodel::Message::fromJson(request["message"].toMap());
             logger()->info("Received message: " + msg.getText());
-            chat->addMessage(msg);
+            chats[chatId]->addMessage(msg);
             emit messageReceived(msg);
             break;
         }
@@ -155,18 +156,25 @@ void ChatController::sendGreeting()
     m["type"] = int(RequestType::GREET);
     m["user"] = ownUser->toJson();
     QByteArray data = QtJson::serialize(m);
-    sendData(data);
+
+    sendData(data, !iAmServer); // we need to tell another c++ client who we are
 }
 
-bool ChatController::sendData(const QByteArray &data)
+bool ChatController::sendData(const QByteArray &data, bool prependProtocol)
 {
     if(client->state() == QAbstractSocket::ConnectedState) {
         logger()->info("Sending byte array...");
         QByteArray sizeInfo;
         QDataStream stream(&sizeInfo, QIODevice::WriteOnly);
         stream << i2imodel::message_size_t(data.size() + sizeof(i2imodel::message_size_t));
+
+        if (prependProtocol) {
+            char protocolId[] = {char(0xFF), char(0xFF)};
+            client->write(protocolId, 2);
+        }
         client->write(sizeInfo); //write size of data
         client->write(data); //write the data itself
+
         return client->waitForBytesWritten();
     } else {
         logger()->info(QString("Can't send byte array because socket is not connected: state is %1").arg(client->state()));
@@ -181,4 +189,156 @@ QByteArray ChatController::messageToRequestBytes(const i2imodel::Message &msg)
     m["type"] = int(RequestType::MESSAGE);
     m["message"] = msg.toJson();
     return QtJson::serialize(m);
+}
+
+AbstractChatController::AbstractChatController(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser)
+    : client(client), ownUser(ownUser), chatId(0)
+{
+    QObject::connect(client, &QTcpSocket::readyRead, this, &AbstractChatController::onNewData);
+}
+
+AbstractChatController::~AbstractChatController()
+{
+    client->deleteLater();
+    client = nullptr;
+}
+
+EdgarChatController::EdgarChatController(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, quint16 loginSize)
+    : AbstractChatController(client, ownUser),  messageSize(0)
+{
+    buffer.append(loginSize >> 8);
+    buffer.append(loginSize & 0xFF);
+}
+
+void EdgarChatController::onNewData()
+{
+    do {
+        logger()->info("Receive something from Edgar client");
+        switch (notReadyMessage.currentReadingState) {
+        case NotReadyMessage::MessageReadState::READING_NAME:
+            if (readModifiedUTF(notReadyMessage.author)) {
+                notReadyMessage.currentReadingState = NotReadyMessage::MessageReadState::READING_TEXT;
+            }
+            break;
+        case NotReadyMessage::MessageReadState::READING_TEXT:
+            if (readModifiedUTF(notReadyMessage.text)) {
+                notReadyMessage.currentReadingState = NotReadyMessage::MessageReadState::READING_PORT;
+            }
+            break;
+        case NotReadyMessage::MessageReadState::READING_PORT:
+            if (readInt(notReadyMessage.port)) {
+                i2imodel::Message msg = notReadyMessage.getMessage(client);
+                chatId = i2imodel::User::getId(client->peerAddress().toIPv4Address(), notReadyMessage.port);
+                if (!chats.contains(chatId) && msg.getText() == QString("%1 is knocking").arg(notReadyMessage.author)) {
+                    QSharedPointer<i2imodel::User> user(
+                                new i2imodel::User(notReadyMessage.author, client->peerAddress().toIPv4Address(),
+                                                   notReadyMessage.port));
+
+                    chats[chatId].reset(new i2imodel::Chat(user));
+                    emit peerGreeted(this);
+                }
+                emit messageReceived(msg);
+                chats[chatId]->addMessage(msg);
+
+                notReadyMessage.clear();
+                notReadyMessage.currentReadingState = NotReadyMessage::MessageReadState::READING_NAME;
+            }
+            break;
+        }
+    } while (client->bytesAvailable());
+}
+
+bool EdgarChatController::readModifiedUTF(QString &result)
+{
+    auto setMessageSize = [this]() {
+        QDataStream ds(buffer);
+        ds >> messageSize;
+        messageSize += 2;
+        logger()->info(QString("Message size should be %1 bytes").arg(messageSize));
+    };
+
+    if (buffer.size() >= UTF_SIZE_BYTES_NUMBER) {
+        setMessageSize();
+    }
+
+    do {
+        logger()->debug(QString("now buffer size is %1").arg(buffer.size()));
+        if (buffer.size() < UTF_SIZE_BYTES_NUMBER) {
+            buffer.append(client->read(UTF_SIZE_BYTES_NUMBER - buffer.size()));
+        } else {
+            buffer.append(client->read(messageSize - buffer.size()));
+        }
+
+        logger()->info(QString("Received some data; now buffer contains %1 bytes").arg(buffer.size()));
+        if (messageSize == 0 && buffer.size() >= UTF_SIZE_BYTES_NUMBER) {
+            setMessageSize();
+        }
+
+        if (messageSize > buffer.size()) {
+            continue;
+        }
+
+        for (auto iter = buffer.begin() + 2; iter != buffer.end();) {
+            if ((*iter & 0x80) == 0) { // single byte
+                result.append(QString::fromUtf8(iter, 1));
+                ++iter;
+            } else if ((*iter & 0x20) == 0) { // byte1: 110 <bits 10-6>; byte2: 10 <bits 5-0>
+                char bytes[2];
+                bytes[0] = (*iter & 0x3F) >> 2;
+                bytes[1] = (*iter << 6) | (*(iter+1) & 0x7F);
+                iter += 2;
+                result.append(QString::fromUtf8(bytes, 2));
+            } else { // byte1: 1110 <bits 15-12>; byte2: 10 <bits 11-6>; byte3: 10 <bits 5-0>
+                Q_ASSERT((*iter & 0x10) == 0);
+                char bytes[2];
+                bytes[0] = *iter << 4;
+                bytes[0] |= *(iter+1) & 0x7F >> 4;
+                bytes[1] = (*(iter+1) << 6) | (*(iter+2) & 0x7F);
+                result.append(QString::fromUtf8(bytes, 2));
+                iter += 3;
+            }
+        }
+        messageSize = 0;
+        buffer.clear();
+        return true;
+    } while (client->bytesAvailable());
+    return false;
+}
+
+bool EdgarChatController::readInt(qint32 &i)
+{
+    do {
+        if (buffer.size() < sizeof(qint32)) {
+            buffer.append(client->read(sizeof(i2imodel::message_size_t) - buffer.size()));
+        }
+
+        if (sizeof(qint32) > buffer.size()) {
+            continue;
+        }
+
+        QDataStream ds(buffer);
+        ds >> i;
+        return true;
+    } while (client->bytesAvailable());
+    return false;
+}
+
+void EdgarChatController::sendMessage(QString text)
+{
+
+}
+
+i2imodel::Message EdgarChatController::NotReadyMessage::getMessage(QTcpSocket *client)
+{
+    auto userId = i2imodel::User::getId(client->peerAddress().toIPv4Address(), port);
+    auto msg = i2imodel::Message(text, QDateTime::currentDateTime(), userId);
+
+    return msg;
+}
+
+void EdgarChatController::NotReadyMessage::clear()
+{
+    text.clear();
+    author.clear();
+    port = 0;
 }

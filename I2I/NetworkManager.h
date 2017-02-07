@@ -12,6 +12,8 @@ namespace i2imodel {
 }
 
 class ChatController;
+class EdgarChatController;
+class AbstractChatController;
 
 QT_BEGIN_NAMESPACE
 class QTcpServer;
@@ -48,20 +50,25 @@ public:
 private slots:
     void processPendingDatagrams();
     void onPeerConnection();
-    void onPeerGreet(ChatController *);
+    void onPeerGreet(AbstractChatController *);
     void onPeerDisconnect(ChatController *client);
+    void removeEdgarChat();
+    void protocolDetector();
 signals:
+    void peerGreeted(QSharedPointer<const i2imodel::Chat>);
     void brodcastMessage(const i2inet::BroadcastMessage &msg);
     void messageReceived(const i2imodel::Message&);
-    void peerGreeted(const QSharedPointer<i2imodel::Chat>);
 private:
     void sendAliveMessage() const;
-    ChatController* createChatController(QTcpSocket *client);
+
+    void setupCommonControllerSignals(AbstractChatController *);
+    ChatController* createChatController(QTcpSocket *client, bool iAmServer);
+    EdgarChatController* createEdgarChat(QTcpSocket *client, quint16 loginSize);
     QUdpSocket *socket;
     QSharedPointer<i2imodel::User> ownUser;
     QSharedPointer<QTcpServer> server;
     QMap<i2imodel::userid_t, QSharedPointer<i2imodel::User>> onlineUsers;
-    QMap<i2imodel::userid_t, ChatController*> activeChats;
+    QMap<i2imodel::userid_t, AbstractChatController*> activeChats;
 };
 }
 #endif // NETWORKMANAGER_H
