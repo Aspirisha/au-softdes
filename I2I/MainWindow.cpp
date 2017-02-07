@@ -29,25 +29,24 @@ void MainWindow::onLoggedIn(QSharedPointer<QTcpServer> server, QSharedPointer<i2
 
     QObject::connect(netManager.data(), SIGNAL(brodcastMessage(i2inet::BroadcastMessage)),
                      this, SLOT(onBroadcastMessage(i2inet::BroadcastMessage)));
-    QObject::connect(netManager.data(), SIGNAL(peerGreeted(QSharedPointer<const i2imodel::Chat>)),
-                     this, SLOT(onGreet(QSharedPointer<const i2imodel::Chat>)));
+    QObject::connect(netManager.data(), SIGNAL(peerGreeted(QSharedPointer<i2imodel::Chat>)),
+                     this, SLOT(onGreet(QSharedPointer<i2imodel::Chat>)));
     QObject::connect(netManager.data(), SIGNAL(messageReceived(i2imodel::Message)),
                      this, SLOT(onMessageArrived(i2imodel::Message)));
+    QObject::connect(netManager.data(), SIGNAL(peerLoginRefined(i2imodel::userid_t, QString)),
+                     this, SLOT(onLoginRefined(i2imodel::userid_t,QString)));
     logger()->info(QString("Logged in as %1").arg(user->getLogin()));
     show();
 }
 
-/*void MainWindow::onConnectClicked()
+void MainWindow::onConnectClicked()
 {
-    QString ip = ui->peerIp->getText();
-    int port = ui->peerport->value();
+    QString ip = ui->ip->getText();
+    quint16 port = ui->port->value();
     logger()->info(QString("trying to connected to ip %1 at port %2").arg(ip).arg(port));
 
-    QTcpSocket *socket = new QTcpSocket(this);
-    socket->connectToHost(QHostAddress(ip), port);
-    ChatController *chat = new ChatController(socket);
-
-}*/
+    netManager->connectToEdgarClient(QHostAddress(ip), port);
+}
 
 void MainWindow::onBroadcastMessage(const i2inet::BroadcastMessage &msg)
 {
@@ -84,7 +83,7 @@ void MainWindow::onCurrentPeerChanged(QListWidgetItem *cur, QListWidgetItem *)
     ui->send->setEnabled(currentPeer != 0 && !ui->message->toPlainText().isEmpty());
 }
 
-void MainWindow::onGreet(QSharedPointer<const i2imodel::Chat> chat)
+void MainWindow::onGreet(QSharedPointer<i2imodel::Chat> chat)
 {
     logger()->info(QString("Got greetings from user %1").arg(chat->getPeerLogin()));
     chats.insert(chat->getId(), chat);
@@ -136,6 +135,7 @@ void MainWindow::onBlinkTimer()
     const int deltaBlue = 2;
 
     for (auto userId: chatsWithNewMessages) {
+        if (!userToWidget.contains(userId)) continue;
         userToWidget[userId]->setBackgroundColor(blinkColor);
     }
 
@@ -143,6 +143,15 @@ void MainWindow::onBlinkTimer()
     blinkColor.setBlue(blinkColor.blue() + direction * deltaBlue);
     if (blinkColor.blue() == 1 || blinkColor.blue() == 255) {
         direction = -direction;
+    }
+}
+
+void MainWindow::onLoginRefined(i2imodel::userid_t peerId, QString newLogin)
+{
+    loginById[peerId] = newLogin;
+
+    if (userToWidget.contains(peerId)) {
+        userToWidget[peerId]->setText(newLogin);
     }
 }
 

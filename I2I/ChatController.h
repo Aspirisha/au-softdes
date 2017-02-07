@@ -19,17 +19,20 @@ class AbstractChatController : public QObject {
 public:
     AbstractChatController(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser);
     i2imodel::userid_t getChatId() const { return chatId; } // may return 0 before greeting!!!
-    QSharedPointer<const i2imodel::Chat> getChat() { return chats[chatId]; } // may return null before greeting!!
+    QSharedPointer<i2imodel::Chat> getChat() { return chats[chatId]; } // may return null before greeting!!
     virtual void sendMessage(QString text) = 0;
   //  virtual QSharedPointer<const i2imodel::Chat> getChat() const = 0;
     virtual ~AbstractChatController();
 
     static const size_t PROTOCOL_ID_SIZE = sizeof(quint16);
 signals:
-    void peerGreeted(AbstractChatController*);
+    void peerGreeted();
+    void userLoginRefined(i2imodel::userid_t, QString);
     void messageReceived(const i2imodel::Message&);
 public slots:
     virtual void onNewData() = 0;
+protected slots:
+    virtual void onSocketConnected() = 0;
 protected:
     QTcpSocket *client;
     QSharedPointer<i2imodel::User> ownUser;
@@ -49,9 +52,10 @@ signals:
     void peerClosedConnection();
 public slots:
     void onNewData() override;
+protected slots:
+    void onSocketConnected() override;
 private slots:
     void checkInactivity();
-    void onSocketConnected();
 private:
     void sendDisconnect();
     void sendGreeting();
@@ -76,10 +80,24 @@ class EdgarChatController : public AbstractChatController {
     Q_OBJECT
     LOG4QT_DECLARE_QCLASS_LOGGER
 public:
+    // when we are server
     EdgarChatController(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, quint16 loginSize);
-protected slots:
+
+    // when we are client
+    EdgarChatController(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, quint32 ip, quint16 port);
+    void sendMessage(QString text) override;
+public slots:
     void onNewData() override;
+protected slots:
+    void onSocketConnected() override;
 private:
+    static const size_t UTF_SIZE_BYTES_NUMBER = 2; // see http://docs.oracle.com/javase/6/docs/api/java/io/DataInput.html#modified-utf-8
+
+    // works only with "standard" set of symbols: u0000 to uffff
+    struct ModifiedUTFCoder {
+        void decode(const QByteArray &utfEncodedString, QString &);
+        void encode(const QString& str, QByteArray&);
+    };
 
     struct NotReadyMessage {
         NotReadyMessage() : currentReadingState(MessageReadState::READING_NAME) {}
@@ -99,15 +117,13 @@ private:
 
     bool readModifiedUTF(QString &); // returns true if string was read fully
     bool readInt(qint32 &i);
+    bool sendData(const QByteArray &data);
 
-    static const size_t UTF_SIZE_BYTES_NUMBER = 2; // see http://docs.oracle.com/javase/6/docs/api/java/io/DataInput.html#modified-utf-8
-
+    QString pendingMessage;
     QByteArray buffer;
     quint16 messageSize;
-
-    // AbstractChatController interface
 public:
-    void sendMessage(QString text);
+
 };
 
 #endif // CHATCONTROLLER_H

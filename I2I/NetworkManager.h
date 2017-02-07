@@ -46,28 +46,43 @@ public:
     NetworkManager(QSharedPointer<i2imodel::User>, QSharedPointer<QTcpServer>);
     void sendMessage(i2imodel::userid_t currentPeer, QString text);
 
+    void connectToEdgarClient(QHostAddress ip, quint16 port);
     static const size_t port = 10532;
 private slots:
     void processPendingDatagrams();
     void onPeerConnection();
-    void onPeerGreet(AbstractChatController *);
+    void onPeerGreet();
     void onPeerDisconnect(ChatController *client);
     void removeEdgarChat();
     void protocolDetector();
 signals:
-    void peerGreeted(QSharedPointer<const i2imodel::Chat>);
+    void peerGreeted(QSharedPointer<i2imodel::Chat>);
+    void peerLoginRefined(i2imodel::userid_t, QString);
     void brodcastMessage(const i2inet::BroadcastMessage &msg);
     void messageReceived(const i2imodel::Message&);
+    void onConnectedToUnknownEdgarClient(QSharedPointer<i2imodel::User>);
 private:
     void sendAliveMessage() const;
 
     void setupCommonControllerSignals(AbstractChatController *);
     ChatController* createChatController(QTcpSocket *client, bool iAmServer);
-    EdgarChatController* createEdgarChat(QTcpSocket *client, quint16 loginSize);
+    EdgarChatController* createEdgarChatReader(QTcpSocket *client, quint16 loginSize);
+
+    // creates new model::Chat object
+    EdgarChatController *createEdgarChatWriter(QTcpSocket *client, quint32 ip, quint16 port);
     QUdpSocket *socket;
+    QMap<i2imodel::userid_t, EdgarChatController*> oldEdgarChats;
     QSharedPointer<i2imodel::User> ownUser;
     QSharedPointer<QTcpServer> server;
-    QMap<i2imodel::userid_t, QSharedPointer<i2imodel::User>> onlineUsers;
+
+    struct PeerView {
+        PeerView(QSharedPointer<i2imodel::User>, bool);
+
+        QSharedPointer<const i2imodel::User> peer;
+        bool isEdgarClient;
+    };
+
+    QMap<i2imodel::userid_t, PeerView> onlineUsers;
     QMap<i2imodel::userid_t, AbstractChatController*> activeChats;
 };
 }

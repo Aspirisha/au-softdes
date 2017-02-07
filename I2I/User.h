@@ -23,6 +23,7 @@ public:
     userid_t getId() const override { return getId(ip, port); }
     quint32 getIp() const {return ip; }
     quint16 getPort() const {return port; }
+    void updateLogin(const QString &newLogin) { login = newLogin; }
     QtJson::JsonObject toJson() const;
     QByteArray serialize() const;
     static QSharedPointer<User> fromJson(const QString &obj);
@@ -33,7 +34,7 @@ public:
     }
 
 private:
-    const QString login;
+    QString login;
     const quint32 ip;
     const quint16 port;
 };

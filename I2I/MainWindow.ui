@@ -100,7 +100,7 @@
      <enum>QFrame::Raised</enum>
     </property>
    </widget>
-   <widget class="QSpinBox" name="spinBox">
+   <widget class="QSpinBox" name="port">
     <property name="geometry">
      <rect>
       <x>197</x>
@@ -243,6 +243,22 @@
     <hint type="destinationlabel">
      <x>57</x>
      <y>554</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>connect</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onConnectClicked()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>162</x>
+     <y>541</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>245</x>
+     <y>540</y>
     </hint>
    </hints>
   </connection>

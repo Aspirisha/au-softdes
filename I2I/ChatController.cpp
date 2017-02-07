@@ -108,7 +108,7 @@ void ChatController::onNewData()
             }
             messagesNotWrittentToChat.clear();
             logger()->info(QString("Received greeting from user %1").arg(peer->getLogin()));
-            emit peerGreeted(this);
+            emit peerGreeted();
             break;
         }
         case RequestType::DISCONNECT:
@@ -210,6 +210,24 @@ EdgarChatController::EdgarChatController(QTcpSocket *client, QSharedPointer<i2im
     buffer.append(loginSize & 0xFF);
 }
 
+EdgarChatController::EdgarChatController(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, quint32 ip, quint16 port)
+    : AbstractChatController(client, ownUser),  messageSize(0)
+{
+    static const QVector<QString> unknowns = {"lemming", "badger", "camel", "armadillo", "walrus", "manatee"};
+    chatId = i2imodel::User::getId(ip, port);
+    if (!chats.contains(chatId)) {
+        QString login = QString("unknown %1").arg(unknowns[qrand() % unknowns.size()]);
+        QSharedPointer<i2imodel::User> peer(new i2imodel::User(login, ip, port));
+        chats[chatId].reset(new i2imodel::Chat(peer));
+    }
+
+    if (client->state() != QTcpSocket::ConnectedState) {
+        QObject::connect(client, SIGNAL(connected()), this, SLOT(onSocketConnected()));
+    } else {
+        onSocketConnected();
+    }
+}
+
 void EdgarChatController::onNewData()
 {
     do {
@@ -235,17 +253,29 @@ void EdgarChatController::onNewData()
                                                    notReadyMessage.port));
 
                     chats[chatId].reset(new i2imodel::Chat(user));
-                    emit peerGreeted(this);
+                    emit peerGreeted();
+                } else if (chats[chatId]->getPeerLogin() != notReadyMessage.author) {
+                    chats[chatId]->updatePeerLogin(notReadyMessage.author);
+                    emit userLoginRefined(chatId, notReadyMessage.author);
                 }
-                emit messageReceived(msg);
                 chats[chatId]->addMessage(msg);
+                emit messageReceived(msg);
 
                 notReadyMessage.clear();
                 notReadyMessage.currentReadingState = NotReadyMessage::MessageReadState::READING_NAME;
             }
-            break;
+            return;
         }
     } while (client->bytesAvailable());
+}
+
+void EdgarChatController::onSocketConnected()
+{
+    logger()->info("Socket connected. Check if we need to send pending message");
+    if (!pendingMessage.isEmpty()) {
+        logger()->info("Sending pending message");
+        sendMessage(pendingMessage);
+    }
 }
 
 bool EdgarChatController::readModifiedUTF(QString &result)
@@ -278,26 +308,9 @@ bool EdgarChatController::readModifiedUTF(QString &result)
             continue;
         }
 
-        for (auto iter = buffer.begin() + 2; iter != buffer.end();) {
-            if ((*iter & 0x80) == 0) { // single byte
-                result.append(QString::fromUtf8(iter, 1));
-                ++iter;
-            } else if ((*iter & 0x20) == 0) { // byte1: 110 <bits 10-6>; byte2: 10 <bits 5-0>
-                char bytes[2];
-                bytes[0] = (*iter & 0x3F) >> 2;
-                bytes[1] = (*iter << 6) | (*(iter+1) & 0x7F);
-                iter += 2;
-                result.append(QString::fromUtf8(bytes, 2));
-            } else { // byte1: 1110 <bits 15-12>; byte2: 10 <bits 11-6>; byte3: 10 <bits 5-0>
-                Q_ASSERT((*iter & 0x10) == 0);
-                char bytes[2];
-                bytes[0] = *iter << 4;
-                bytes[0] |= *(iter+1) & 0x7F >> 4;
-                bytes[1] = (*(iter+1) << 6) | (*(iter+2) & 0x7F);
-                result.append(QString::fromUtf8(bytes, 2));
-                iter += 3;
-            }
-        }
+        ModifiedUTFCoder coder;
+        coder.decode(buffer, result);
+
         messageSize = 0;
         buffer.clear();
         return true;
@@ -323,9 +336,39 @@ bool EdgarChatController::readInt(qint32 &i)
     return false;
 }
 
+bool EdgarChatController::sendData(const QByteArray &data)
+{
+    if(client->state() == QAbstractSocket::ConnectedState) {
+        logger()->info("Sending byte array...");
+        client->write(data); //write the data itself
+        return client->waitForBytesWritten();
+    } else {
+        logger()->info(QString("Can't send byte array because socket is not connected: state is %1").arg(client->state()));
+    }
+
+    return false;
+}
+
 void EdgarChatController::sendMessage(QString text)
 {
+    ModifiedUTFCoder coder;
+    QByteArray data;
+    coder.encode(ownUser->getLogin(), data);
+    QByteArray textData;
+    coder.encode(text, textData);
 
+    data.append(textData);
+    char port[4] = {0, 0, 0, 0};
+    port[2] = ownUser->getPort() >> 8;
+    port[3] = ownUser->getPort() & 0xFF;
+
+    data.append(port, 4);
+
+    i2imodel::Message msg(text, QDateTime::currentDateTime(), ownUser->getId());
+    chats[chatId]->addMessage(msg);
+    if (!sendData(data)) {
+         pendingMessage = text;
+    }
 }
 
 i2imodel::Message EdgarChatController::NotReadyMessage::getMessage(QTcpSocket *client)
@@ -341,4 +384,58 @@ void EdgarChatController::NotReadyMessage::clear()
     text.clear();
     author.clear();
     port = 0;
+}
+
+void EdgarChatController::ModifiedUTFCoder::decode(const QByteArray &utfEncodedString, QString &result)
+{
+    for (auto iter = utfEncodedString.begin() + 2; iter != utfEncodedString.end();) {
+        if ((*iter & 0x80) == 0) { // single byte
+            result.append(QString::fromUtf8(iter, 1));
+            ++iter;
+        } else if ((*iter & 0x20) == 0) { // byte1: 110 <bits 10-6>; byte2: 10 <bits 5-0>
+            char bytes[2];
+            bytes[0] = (*iter & 0x3F) >> 2;
+            bytes[1] = (*iter << 6) | (*(iter+1) & 0x7F);
+            iter += 2;
+            result.append(QString::fromUtf8(bytes, 2));
+        } else { // byte1: 1110 <bits 15-12>; byte2: 10 <bits 11-6>; byte3: 10 <bits 5-0>
+            Q_ASSERT((*iter & 0x10) == 0);
+            char bytes[2];
+            bytes[0] = *iter << 4;
+            bytes[0] |= *(iter+1) & 0x7F >> 4;
+            bytes[1] = (*(iter+1) << 6) | (*(iter+2) & 0x7F);
+            result.append(QString::fromUtf8(bytes, 2));
+            iter += 3;
+        }
+    }
+}
+
+void EdgarChatController::ModifiedUTFCoder::encode(const QString &str, QByteArray & output)
+{
+    std::string s = str.toStdString();
+    for (size_t i = 0; i < s.size(); ) {
+        char c = s[i];
+        if ((c & 0x80) == 0 && c != 0) { // NB 0 is encoded not as single byte
+            output.push_back(c);
+            i++;
+        } else if ((c & 0x20) == 0) {
+            if (c == 0) {
+                output.push_back(3 << 6);
+                output.push_back(1 << 7);
+                i++;
+            } else {
+                output.append(s[i]);
+                output.append(s[i + 1]);
+                i += 2;
+            }
+        } else {
+            output.append(s[i]);
+            output.append(s[i + 1]);
+            output.append(s[i + 2]);
+        }
+    }
+
+    quint16 size = output.size();
+    output.prepend(size & 0xFF);
+    output.prepend(size >> 8);
 }

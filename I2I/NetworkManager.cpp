@@ -23,8 +23,8 @@ void NetworkManager::sendMessage(i2imodel::userid_t currentPeer, QString text)
 {
     auto chat = activeChats.find(currentPeer);
 
-    auto peer = onlineUsers.find(currentPeer);
-    if (peer == onlineUsers.end()) {
+    auto peerInfo = onlineUsers.find(currentPeer);
+    if (peerInfo == onlineUsers.end()) {
         logger()->info(QString("Can't send message because user with id %1 is not known").arg(currentPeer));
         return;
     }
@@ -32,16 +32,44 @@ void NetworkManager::sendMessage(i2imodel::userid_t currentPeer, QString text)
         QTcpSocket *client = new QTcpSocket(this);
 
 
-        quint32 ip = (*peer)->getIp();
-        quint16 port = (*peer)->getPort();
+        quint32 ip = peerInfo->peer->getIp();
+        quint16 port = peerInfo->peer->getPort();
         logger()->info(QString("Establishing connection with peer server: trying ip %1 and port %2").arg(ip).arg(port));
         client->connectToHost(QHostAddress(ip), port);
 
-        createChatController(client, false)->sendMessage(text);
+        if (!peerInfo->isEdgarClient) {
+            createChatController(client, false)->sendMessage(text);
+        } else {
+            createEdgarChatWriter(client, ip, port)->sendMessage(text);
+        }
         //activeChats.insert(chat->getChatId(), chat); // hmm
     } else {
         (*chat)->sendMessage(text);
     }
+}
+
+void NetworkManager::connectToEdgarClient(QHostAddress ip, quint16 port)
+{
+    auto peerId = i2imodel::User::getId(ip.toIPv4Address(), port);
+    auto peerInfo = onlineUsers.find(peerId);
+
+    if (peerInfo != onlineUsers.end()) {
+        logger()->info(QString("Already connected to this client").arg(peerId));
+        return;
+    }
+
+    QTcpSocket *socket = new QTcpSocket(this);
+    logger()->info(QString("Establishing connection with Edgar peer server: trying ip %1 and port %2")
+                   .arg(ip.toIPv4Address()).arg(port));
+    socket->connectToHost(QHostAddress(ip), port);
+    auto chat = createEdgarChatWriter(socket, ip.toIPv4Address(), port);
+    onlineUsers.insert(peerId, PeerView(chat->getChat()->getPeer(), true));
+    QObject::connect(socket, &QTcpSocket::connected, [this, chat](){
+        auto peer = chat->getChat()->getPeer();
+        this->logger()->info(QString("Passing peer %1 to ui").arg(peer->getLogin()));
+        emit this->peerGreeted(chat->getChat());
+    });
+    chat->sendMessage(QString("%1 is knocking").arg(ownUser->getLogin()));
 }
 
 void NetworkManager::processPendingDatagrams()
@@ -59,7 +87,7 @@ void NetworkManager::processPendingDatagrams()
                 break;
             logger()->info(QString("Received datagram contained alive message from user: \"%1\"").arg(m.user->getLogin()));
             if (!onlineUsers.contains(m.user->getId())) {
-                onlineUsers.insert(m.user->getId(), m.user);
+                onlineUsers.insert(m.user->getId(), {m.user, false});
                 sendAliveMessage();
                 emit brodcastMessage(m);
             }
@@ -79,14 +107,19 @@ void NetworkManager::onPeerConnection()
     QObject::connect(client, SIGNAL(readyRead()), this, SLOT(protocolDetector()));
 }
 
-void NetworkManager::onPeerGreet(AbstractChatController* chat)
+void NetworkManager::onPeerGreet()
 {
+    AbstractChatController* chat = dynamic_cast<AbstractChatController*>(sender());
     auto res = activeChats.find(chat->getChatId());
     if (res != activeChats.end())
         delete res.value();
     activeChats.insert(chat->getChatId(), chat);
-    AbstractChatController* c = dynamic_cast<AbstractChatController*>(sender());
-    emit peerGreeted(c->getChat());
+    if (!onlineUsers.contains(chat->getChatId())) { // This is Edgar client
+        auto peer = chat->getChat()->getPeer();
+        onlineUsers.insert(peer->getId(), {peer, true});
+    }
+
+    emit peerGreeted(chat->getChat());
 }
 
 void NetworkManager::onPeerDisconnect(ChatController *chat)
@@ -97,7 +130,9 @@ void NetworkManager::onPeerDisconnect(ChatController *chat)
 void NetworkManager::removeEdgarChat()
 {
     EdgarChatController *chat = dynamic_cast<EdgarChatController*>(sender());
-    delete chat;
+    delete oldEdgarChats[chat->getChatId()];
+    activeChats.remove(chat->getChatId());
+    oldEdgarChats[chat->getChatId()] = chat;
 }
 
 void NetworkManager::protocolDetector()
@@ -117,7 +152,7 @@ void NetworkManager::protocolDetector()
         createChatController(client, true);
     } else {
         logger()->info("Creating chat with Edgar client");
-        createEdgarChat(client, protocolID); // tODO connect onmessage with chat deleter
+        createEdgarChatReader(client, protocolID); // tODO connect onmessage with chat deleter
     }
 }
 
@@ -132,7 +167,7 @@ void NetworkManager::sendAliveMessage() const
 
 void NetworkManager::setupCommonControllerSignals(AbstractChatController *chat)
 {
-    QObject::connect(chat, SIGNAL(peerGreeted(AbstractChatController*)), this, SLOT(onPeerGreet(AbstractChatController*)));
+    QObject::connect(chat, SIGNAL(peerGreeted()), this, SLOT(onPeerGreet()));
     QObject::connect(chat, SIGNAL(messageReceived(i2imodel::Message)), this, SIGNAL(messageReceived(i2imodel::Message)));
 }
 
@@ -151,11 +186,25 @@ ChatController* NetworkManager::createChatController(QTcpSocket *client, bool iA
     return chat;
 }
 
-EdgarChatController *NetworkManager::createEdgarChat(QTcpSocket *client, quint16 loginSize)
+EdgarChatController *NetworkManager::createEdgarChatReader(QTcpSocket *client, quint16 loginSize)
 {
     EdgarChatController* chat = new EdgarChatController(client, ownUser, loginSize);
-    setupCommonControllerSignals(chat);
     QObject::connect(chat, SIGNAL(messageReceived(i2imodel::Message)), this, SLOT(removeEdgarChat()));
+    QObject::connect(chat, SIGNAL(userLoginRefined(i2imodel::userid_t, QString)),
+                     this, SIGNAL(peerLoginRefined(i2imodel::userid_t, QString)));
+    setupCommonControllerSignals(chat);
+
+    if (client->bytesAvailable())
+        chat->onNewData();
+    return chat;
+}
+
+EdgarChatController *NetworkManager::createEdgarChatWriter(QTcpSocket *client, quint32 ip, quint16 port)
+{
+    EdgarChatController* chat = new EdgarChatController(client, ownUser, ip, port);
+    QObject::connect(chat, SIGNAL(messageReceived(i2imodel::Message)), this, SLOT(removeEdgarChat()));
+    setupCommonControllerSignals(chat);
+
     return chat;
 }
 
@@ -173,6 +222,11 @@ QByteArray BroadcastMessage::serialize() const
     msg["type"] = int(type);
     msg["user"] = user->toJson();
     return QtJson::serialize(msg);
+}
+
+NetworkManager::PeerView::PeerView(QSharedPointer<i2imodel::User> peer, bool isEdgarClient)
+    : peer(peer), isEdgarClient(isEdgarClient)
+{
 }
 
 }
