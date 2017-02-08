@@ -391,22 +391,18 @@ void EdgarChatController::NotReadyMessage::clear()
 void EdgarChatController::ModifiedUTFCoder::decode(const QByteArray &utfEncodedString, QString &result)
 {
     for (auto iter = utfEncodedString.begin() + 2; iter != utfEncodedString.end();) {
-        if ((*iter & 0x80) == 0) { // single byte
+        if ((iter[0] & 0x80) == 0) { // single byte
             result.append(QString::fromUtf8(iter, 1));
             ++iter;
-        } else if ((*iter & 0x20) == 0) { // byte1: 110 <bits 10-6>; byte2: 10 <bits 5-0>
-            char bytes[2];
-            bytes[0] = (*iter & 0x3F) >> 2;
-            bytes[1] = (*iter << 6) | (*(iter+1) & 0x7F);
+        } else if ((iter[0] & 0x20) == 0) { // byte1: 110 <bits 10-6>; byte2: 10 <bits 5-0>
+            if (iter[0] == 0xC0 && iter[1] == 0x80) { // this is 0
+                result.append((char)0);
+            } else {
+                result.append(QString::fromUtf8(iter, 2));
+            }
             iter += 2;
-            result.append(QString::fromUtf8(bytes, 2));
         } else { // byte1: 1110 <bits 15-12>; byte2: 10 <bits 11-6>; byte3: 10 <bits 5-0>
-            Q_ASSERT((*iter & 0x10) == 0);
-            char bytes[2];
-            bytes[0] = *iter << 4;
-            bytes[0] |= *(iter+1) & 0x7F >> 4;
-            bytes[1] = (*(iter+1) << 6) | (*(iter+2) & 0x7F);
-            result.append(QString::fromUtf8(bytes, 2));
+            result.append(QString::fromUtf8(iter, 3));
             iter += 3;
         }
     }
@@ -422,18 +418,15 @@ void EdgarChatController::ModifiedUTFCoder::encode(const QString &str, QByteArra
             i++;
         } else if ((c & 0x20) == 0) {
             if (c == 0) {
-                output.push_back(3 << 6);
-                output.push_back(1 << 7);
+                output.push_back(0xC0);
+                output.push_back(0x80);
                 i++;
             } else {
-                output.append(s[i]);
-                output.append(s[i + 1]);
+                output.append(s.c_str() + i, 2);
                 i += 2;
             }
         } else {
-            output.append(s[i]);
-            output.append(s[i + 1]);
-            output.append(s[i + 2]);
+            output.append(s.c_str() + i, 3);
         }
     }
 
