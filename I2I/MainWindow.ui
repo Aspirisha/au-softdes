@@ -144,9 +144,11 @@
    </property>
    <widget class="QMenu" name="menuSettings">
     <property name="title">
-     <string>Settings</string>
+     <string>File</string>
     </property>
-    <addaction name="actionEdit_Profile"/>
+    <addaction name="actionChangeLogin"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
@@ -158,14 +160,19 @@
    <addaction name="menuAbout"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionEdit_Profile">
+  <action name="actionChangeLogin">
    <property name="text">
-    <string>Edit Profile</string>
+    <string>Change Login</string>
    </property>
   </action>
   <action name="actionAbout">
    <property name="text">
     <string>About</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
    </property>
   </action>
  </widget>

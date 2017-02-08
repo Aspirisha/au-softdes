@@ -1,3 +1,5 @@
+#include <QInputDialog>
+#include <QMessageBox>
 #include "MainWindow.h"
 #include "ChatController.h"
 #include "ui_MainWindow.h"
@@ -14,11 +16,34 @@ MainWindow::MainWindow(QWidget *parent) :
 
     blinkNewMessagesTimer.setInterval(10);
     blinkNewMessagesTimer.start();
+
+    auto exitAction = ui->actionExit;
+    exitAction->setStatusTip(tr("Exit the application"));
+    connect(exitAction, SIGNAL(triggered()), this, SLOT(close()));
+
+    auto changeLoginAction = ui->actionChangeLogin;
+    changeLoginAction->setStatusTip(tr("Change currently used login"));
+    connect(changeLoginAction, SIGNAL(triggered()), this, SLOT(onChangeOwnLogin()));
+
+    auto about = ui->actionAbout;
+    connect(about, SIGNAL(triggered()), this, SLOT(onShowAbout()));
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::onChangeOwnLogin()
+{
+    bool ok;
+    QString login = QInputDialog::getText(this, tr("Login Change"),
+                                         tr("New login:"), QLineEdit::Normal,
+                                         user->getLogin(), &ok);
+    if (ok && !login.isEmpty()) {
+        user->updateLogin(login);
+        onLoginRefined(user->getId(), login);
+    }
 }
 
 void MainWindow::onLoggedIn(QSharedPointer<QTcpServer> server, QSharedPointer<i2imodel::User> user)
@@ -81,6 +106,9 @@ void MainWindow::onCurrentPeerChanged(QListWidgetItem *cur, QListWidgetItem *)
     showChat();
 
     ui->send->setEnabled(currentPeer != 0 && !ui->message->toPlainText().isEmpty());
+
+    // TODO not thread safe if threads are used; as everything around btw;
+    chatsWithNewMessages.remove(currentPeer);
 }
 
 void MainWindow::onGreet(QSharedPointer<i2imodel::Chat> chat)
@@ -148,11 +176,34 @@ void MainWindow::onBlinkTimer()
 
 void MainWindow::onLoginRefined(i2imodel::userid_t peerId, QString newLogin)
 {
+    if (!loginById.contains(peerId)) {
+        return;
+    }
+
+    QString oldLogin = loginById[peerId];
     loginById[peerId] = newLogin;
+    writeNotification(QString("User %1 changed login to %2").arg(oldLogin).arg(newLogin));
 
     if (userToWidget.contains(peerId)) {
         userToWidget[peerId]->setText(newLogin);
     }
+}
+
+void MainWindow::onShowAbout()
+{
+    QMessageBox::about(this, "About i2i", "I2I is a smiple mensgeres written for sotfoew desing course. "
+                                          "It supports two basic protocols: I2I protocol (native) and "
+                                          "TinyChat 9000 messenger protocol "
+                                          "(see "
+                                          "<a href='https://github.com/edgarzhavoronkov/au-software-design-fall-2016/tree/messenger'>TinyChat 9000 repo</a>"
+                                          " for details). <br><br>Please, don't:"
+                                          "<ul>"
+                                          "<li>break (chat is goddamn fragile)</li>"
+                                          "<li>connect several times to same TinyChat 9000 host,"
+                                          "it can cause unexpected WORLD DESTRUCTION</li>"
+                                          "</ul>"
+                                          "<br>Author: Aspirisha</br>"
+                                          "<br>Year: 2017");
 }
 
 void MainWindow::showChat()
@@ -193,6 +244,21 @@ void MainWindow::writeLogin(i2imodel::userid_t id)
 
     ui->chat->moveCursor(QTextCursor::End);
     ui->chat->setFontWeight(fw);
+    ui->chat->setTextColor(tc);
+}
+
+void MainWindow::writeNotification(QString text)
+{
+    qreal fw = ui->chat->fontPointSize();
+    QColor tc = ui->chat->textColor();
+
+    ui->chat->setFontPointSize(8);
+    ui->chat->setTextColor(QColor("gray"));
+    ui->chat->append(text);
+
+    ui->chat->moveCursor(QTextCursor::End);
+    ui->chat->setAlignment(Qt::AlignLeft);
+    ui->chat->setFontPointSize(fw);
     ui->chat->setTextColor(tc);
 }
 

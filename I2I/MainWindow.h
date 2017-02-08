@@ -24,8 +24,8 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
-
 private slots:
+    void onChangeOwnLogin();
     void onLoggedIn(QSharedPointer<QTcpServer> server, QSharedPointer<i2imodel::User> user);
     void onBroadcastMessage(const i2inet::BroadcastMessage&);
     void onCurrentPeerChanged(QListWidgetItem*, QListWidgetItem*);
@@ -37,10 +37,12 @@ private slots:
     void onMessageArrived(const i2imodel::Message& msg);
     void onBlinkTimer();
     void onLoginRefined(i2imodel::userid_t, QString);
+    void onShowAbout();
 private:
     void showChat();
     void addUserAsAlive(QString login, i2imodel::userid_t id);
     void writeLogin(i2imodel::userid_t id);
+    void writeNotification(QString text);
 
     Ui::MainWindow *ui;
     i2imodel::userid_t currentPeer;

@@ -365,9 +365,11 @@ void EdgarChatController::sendMessage(QString text)
     data.append(port, 4);
 
     i2imodel::Message msg(text, QDateTime::currentDateTime(), ownUser->getId());
-    chats[chatId]->addMessage(msg);
+
     if (!sendData(data)) {
          pendingMessage = text;
+    } else {
+        chats[chatId]->addMessage(msg);
     }
 }
 

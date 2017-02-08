@@ -62,9 +62,10 @@ void NetworkManager::connectToEdgarClient(QHostAddress ip, quint16 port)
     logger()->info(QString("Establishing connection with Edgar peer server: trying ip %1 and port %2")
                    .arg(ip.toIPv4Address()).arg(port));
     socket->connectToHost(QHostAddress(ip), port);
-    auto chat = createEdgarChatWriter(socket, ip.toIPv4Address(), port);
-    onlineUsers.insert(peerId, PeerView(chat->getChat()->getPeer(), true));
-    QObject::connect(socket, &QTcpSocket::connected, [this, chat](){
+    EdgarChatController* chat = createEdgarChatWriter(socket, ip.toIPv4Address(), port);
+
+    QObject::connect(socket, &QTcpSocket::connected, [this, chat, peerId](){
+        onlineUsers.insert(peerId, PeerView(chat->getChat()->getPeer(), true));
         auto peer = chat->getChat()->getPeer();
         this->logger()->info(QString("Passing peer %1 to ui").arg(peer->getLogin()));
         emit this->peerGreeted(chat->getChat());
