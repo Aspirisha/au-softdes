@@ -43,6 +43,7 @@ void MainWindow::onChangeOwnLogin()
     if (ok && !login.isEmpty()) {
         user->updateLogin(login);
         onLoginRefined(user->getId(), login);
+        netManager->ownLoginChanged();
     }
 }
 
@@ -58,8 +59,6 @@ void MainWindow::onLoggedIn(QSharedPointer<QTcpServer> server, QSharedPointer<i2
                      this, SLOT(onGreet(QSharedPointer<i2imodel::Chat>)));
     QObject::connect(netManager.data(), SIGNAL(messageReceived(i2imodel::Message)),
                      this, SLOT(onMessageArrived(i2imodel::Message)));
-    QObject::connect(netManager.data(), SIGNAL(peerLoginRefined(i2imodel::userid_t, QString)),
-                     this, SLOT(onLoginRefined(i2imodel::userid_t,QString)));
     logger()->info(QString("Logged in as %1").arg(user->getLogin()));
     show();
 }
@@ -79,6 +78,11 @@ void MainWindow::onBroadcastMessage(const i2inet::BroadcastMessage &msg)
     case i2inet::BroadcastRequestType::ALIVE: {
         logger()->info(QString("User %1 appeared online").arg(msg.user->getLogin()));
         addUserAsAlive(msg.user->getLogin(), msg.user->getId());
+        break;
+    }
+    case i2inet::BroadcastRequestType::CHANGE_LOGIN: {
+        logger()->info(QString("User %1 changed login").arg(msg.user->getLogin()));
+        onLoginRefined(msg.user->getId(), msg.user->getLogin());
         break;
     }
     case i2inet::BroadcastRequestType::DISCONNECT: {
@@ -115,6 +119,8 @@ void MainWindow::onGreet(QSharedPointer<i2imodel::Chat> chat)
 {
     logger()->info(QString("Got greetings from user %1").arg(chat->getPeerLogin()));
     chats.insert(chat->getId(), chat);
+
+    // for tiny9000 clients
     loginById[chat->getId()] = chat->getPeerLogin();
 
     if (!userToWidget.contains(chat->getId())) { // for Edgar chats
@@ -182,7 +188,11 @@ void MainWindow::onLoginRefined(i2imodel::userid_t peerId, QString newLogin)
 
     QString oldLogin = loginById[peerId];
     loginById[peerId] = newLogin;
-    writeNotification(QString("User %1 changed login to %2").arg(oldLogin).arg(newLogin));
+
+    // TODO need to use some queue where notifications together with messages are stored
+    // but who gives a S#$T
+    if (peerId == currentPeer)
+        writeNotification(QString("User %1 changed login to %2").arg(oldLogin).arg(newLogin));
 
     if (userToWidget.contains(peerId)) {
         userToWidget[peerId]->setText(newLogin);
@@ -226,6 +236,7 @@ void MainWindow::showChat()
 
 void MainWindow::addUserAsAlive(QString login, i2imodel::userid_t id)
 {
+    loginById[id] = login;
     QListWidgetItem * item = new QListWidgetItem(login, ui->peers);
     item->setData(Qt::UserRole, id);
     userToWidget.insert(id, item);

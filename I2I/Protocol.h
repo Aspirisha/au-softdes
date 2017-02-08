@@ -20,7 +20,6 @@ public:
     static const size_t PROTOCOL_ID_SIZE = sizeof(quint16);
 signals:
     void peerGreeted();
-    void userLoginRefined(i2imodel::userid_t, QString);
     void messageReceived(const i2imodel::Message&);
 public slots:
     virtual void onNewData() = 0;
@@ -84,6 +83,8 @@ public:
     // when we are client
     Tiny9000ChatProtocol(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, quint32 ip, quint16 port);
     void sendMessage(QString text) override;
+signals:
+    void userLoginRefined(QSharedPointer<i2imodel::User>);
 public slots:
     void onNewData() override;
 protected slots:

@@ -256,7 +256,7 @@ void Tiny9000ChatProtocol::onNewData() {
                     emit peerGreeted();
                 } else if (chats[chatId]->getPeerLogin() != notReadyMessage.author) {
                     chats[chatId]->updatePeerLogin(notReadyMessage.author);
-                    emit userLoginRefined(chatId, notReadyMessage.author);
+                    emit userLoginRefined(chats[chatId]->getPeer());
                 }
                 chats[chatId]->addMessage(msg);
                 emit messageReceived(msg);

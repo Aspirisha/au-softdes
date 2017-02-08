@@ -36,13 +36,13 @@ private slots:
     void onConnectClicked();
     void onMessageArrived(const i2imodel::Message& msg);
     void onBlinkTimer();
-    void onLoginRefined(i2imodel::userid_t, QString);
     void onShowAbout();
 private:
     void showChat();
     void addUserAsAlive(QString login, i2imodel::userid_t id);
     void writeLogin(i2imodel::userid_t id);
     void writeNotification(QString text);
+    void onLoginRefined(i2imodel::userid_t, QString);
 
     Ui::MainWindow *ui;
     i2imodel::userid_t currentPeer;

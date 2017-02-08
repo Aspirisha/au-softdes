@@ -24,6 +24,7 @@ QT_END_NAMESPACE
 namespace i2inet {
 enum class BroadcastRequestType {
     ALIVE,
+    CHANGE_LOGIN,
     DISCONNECT
 };
 
@@ -46,6 +47,7 @@ class NetworkManager : public QObject
 public:
     NetworkManager(QSharedPointer<i2imodel::User>, QSharedPointer<QTcpServer>);
     void sendMessage(i2imodel::userid_t currentPeer, QString text);
+    void ownLoginChanged() const;
 
     /**
      * @brief connects to a given Tiny 9000 client using port and ip
@@ -91,15 +93,6 @@ signals:
      * @brief peerGreeted rethrows greet signal from protocols above
      */
     void peerGreeted(QSharedPointer<i2imodel::Chat>);
-
-    /**
-     * @brief peerLoginRefined is called in two cases
-     * 1. Normal case is user changing his or her login
-     * 2. Tiny 9000 case: since Tiny9000 doesn't send alive message, when connected to this type of clients
-     * we have no idea of user login, so only after the first message from such client is received, the login becomes known
-     * and this info should be propagated to whoever is interested
-     */
-    void peerLoginRefined(i2imodel::userid_t, QString);
     void brodcastMessage(const i2inet::BroadcastMessage &msg);
     void messageReceived(const i2imodel::Message&);
     /**
@@ -125,7 +118,7 @@ private:
     struct PeerView {
         PeerView(QSharedPointer<i2imodel::User>, bool);
 
-        QSharedPointer<const i2imodel::User> peer;
+        QSharedPointer<i2imodel::User> peer;
         bool isEdgarClient;
     };
 

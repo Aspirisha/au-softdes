@@ -48,6 +48,14 @@ void NetworkManager::sendMessage(i2imodel::userid_t currentPeer, QString text)
     }
 }
 
+void NetworkManager::ownLoginChanged() const
+{
+    QByteArray datagram = BroadcastMessage(BroadcastRequestType::CHANGE_LOGIN, ownUser).serialize();
+    logger()->info("Sending broadcast change login message");
+    socket->writeDatagram(datagram.data(), datagram.size(),
+                          QHostAddress::Broadcast, BROADCAST_PORT);
+}
+
 void NetworkManager::connectToTiny9000Client(QHostAddress ip, quint16 port)
 {
     auto peerId = i2imodel::User::getId(ip.toIPv4Address(), port);
@@ -82,10 +90,10 @@ void NetworkManager::processPendingDatagrams()
         logger()->info("Received datagram");
 
         BroadcastMessage m = BroadcastMessage::deserialize(datagram);
+        if (m.user->getId() == ownUser->getId())
+            continue;
         switch (m.type) {
         case BroadcastRequestType::ALIVE:
-            if (m.user->getId() == ownUser->getId())
-                break;
             logger()->info(QString("Received datagram contained alive message from user: \"%1\"").arg(m.user->getLogin()));
             if (!onlineUsers.contains(m.user->getId())) {
                 onlineUsers.insert(m.user->getId(), {m.user, false});
@@ -94,7 +102,14 @@ void NetworkManager::processPendingDatagrams()
             }
 
             break;
-        case  BroadcastRequestType::DISCONNECT:
+        case BroadcastRequestType::CHANGE_LOGIN: {
+            QString login = m.user->getLogin();
+            logger()->info("Received login change: " + login);
+            onlineUsers.find(m.user->getId())->peer->updateLogin(login);
+            emit brodcastMessage(m);
+            break;
+        }
+        case BroadcastRequestType::DISCONNECT:
             break;
         }
     }
@@ -191,8 +206,10 @@ Tiny9000ChatProtocol *NetworkManager::createTiny9000ChatReader(QTcpSocket *clien
 {
     Tiny9000ChatProtocol* chat = new Tiny9000ChatProtocol(client, ownUser, loginSize);
     QObject::connect(chat, SIGNAL(messageReceived(i2imodel::Message)), this, SLOT(removeTiny9000Chat()));
-    QObject::connect(chat, SIGNAL(userLoginRefined(i2imodel::userid_t, QString)),
-                     this, SIGNAL(peerLoginRefined(i2imodel::userid_t, QString)));
+    QObject::connect(chat, &Tiny9000ChatProtocol::userLoginRefined,
+                     [this](QSharedPointer<i2imodel::User> peer) {
+        emit this->brodcastMessage(BroadcastMessage(BroadcastRequestType::CHANGE_LOGIN, peer));
+    });
     setupCommonControllerSignals(chat);
 
     if (client->bytesAvailable())
