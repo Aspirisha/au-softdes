@@ -7,22 +7,15 @@
 #include "ModelCommon.h"
 #include "Chat.h"
 
-enum class RequestType {
-    GREET = 0,
-    DISCONNECT,
-    MESSAGE,
-};
-
-class AbstractChatController : public QObject {
+class AbstractChatProtocol : public QObject {
     Q_OBJECT
     LOG4QT_DECLARE_QCLASS_LOGGER
 public:
-    AbstractChatController(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser);
+    AbstractChatProtocol(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser);
     i2imodel::userid_t getChatId() const { return chatId; } // may return 0 before greeting!!!
     QSharedPointer<i2imodel::Chat> getChat() { return chats[chatId]; } // may return null before greeting!!
     virtual void sendMessage(QString text) = 0;
-  //  virtual QSharedPointer<const i2imodel::Chat> getChat() const = 0;
-    virtual ~AbstractChatController();
+    virtual ~AbstractChatProtocol();
 
     static const size_t PROTOCOL_ID_SIZE = sizeof(quint16);
 signals:
@@ -40,14 +33,15 @@ protected:
     i2imodel::userid_t chatId;
 };
 
-class ChatController : public AbstractChatController
+class I2IChatProtocol : public AbstractChatProtocol
 {
     Q_OBJECT
     LOG4QT_DECLARE_QCLASS_LOGGER
 public:
-    ChatController(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, bool iAmServer);
-    void resetClient(QTcpSocket *client);
+    I2IChatProtocol(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, bool iAmServer);
     void sendMessage(QString text) override;
+
+    static const quint16 PROTOCOL_ID;
 signals:
     void peerClosedConnection();
 public slots:
@@ -60,31 +54,35 @@ private:
     void sendDisconnect();
     void sendGreeting();
     bool sendData(const QByteArray &data, bool prependProtocol = false);
-    const bool iAmServer;
     QByteArray messageToRequestBytes(const i2imodel::Message&);
 
+    enum class RequestType {
+        GREET = 0,
+        DISCONNECT,
+        MESSAGE,
+    };
+
     static const size_t CHECK_INACTIVITY_DELTA_SECONDS = 300;
-
-
     qint64 lastInteractionTimestamp;
-
     QList<i2imodel::Message> pendingMessages;
     QList<i2imodel::Message> messagesNotWrittentToChat;
+
     // data being received
     QByteArray buffer;
+    const bool iAmServer;
     i2imodel::message_size_t messageSize;
     QTimer timer;
 };
 
-class EdgarChatController : public AbstractChatController {
+class Tiny9000ChatProtocol : public AbstractChatProtocol {
     Q_OBJECT
     LOG4QT_DECLARE_QCLASS_LOGGER
 public:
     // when we are server
-    EdgarChatController(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, quint16 loginSize);
+    Tiny9000ChatProtocol(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, quint16 loginSize);
 
     // when we are client
-    EdgarChatController(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, quint32 ip, quint16 port);
+    Tiny9000ChatProtocol(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, quint32 ip, quint16 port);
     void sendMessage(QString text) override;
 public slots:
     void onNewData() override;

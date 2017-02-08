@@ -1,7 +1,7 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include "MainWindow.h"
-#include "ChatController.h"
+#include "Protocol.h"
 #include "ui_MainWindow.h"
 #include "log4qt/logger.h"
 #include "NetworkManager.h"
@@ -70,7 +70,7 @@ void MainWindow::onConnectClicked()
     quint16 port = ui->port->value();
     logger()->info(QString("trying to connected to ip %1 at port %2").arg(ip).arg(port));
 
-    netManager->connectToEdgarClient(QHostAddress(ip), port);
+    netManager->connectToTiny9000Client(QHostAddress(ip), port);
 }
 
 void MainWindow::onBroadcastMessage(const i2inet::BroadcastMessage &msg)

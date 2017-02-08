@@ -6,7 +6,7 @@
 #include <QListWidgetItem>
 #include <QColor>
 #include "User.h"
-#include "ChatController.h"
+#include "Protocol.h"
 #include <log4qt/logger.h>
 namespace Ui {
 class MainWindow;

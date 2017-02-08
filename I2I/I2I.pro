@@ -20,11 +20,11 @@ SOURCES += main.cpp \
     LoginDialog.cpp \
     MainWindow.cpp \
     qt-json/json.cpp \
-    ChatController.cpp \
     User.cpp \
     Message.cpp \
     CustomIpEditor.cpp \
-    NetworkManager.cpp
+    NetworkManager.cpp \
+    Protocol.cpp
 
 HEADERS  += \
     LoginDialog.h \
@@ -34,9 +34,9 @@ HEADERS  += \
     User.h \
     Message.h \
     Chat.h \
-    ChatController.h \
     CustomIpEditor.h \
-    NetworkManager.h
+    NetworkManager.h \
+    Protocol.h
 
 FORMS    += \
     LoginDialog.ui \
