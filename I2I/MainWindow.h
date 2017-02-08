@@ -5,9 +5,10 @@
 #include <QTcpServer>
 #include <QListWidgetItem>
 #include <QColor>
+#include <log4qt/logger.h>
 #include "User.h"
 #include "Protocol.h"
-#include <log4qt/logger.h>
+
 namespace Ui {
 class MainWindow;
 }

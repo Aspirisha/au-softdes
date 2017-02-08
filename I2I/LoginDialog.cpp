@@ -14,7 +14,7 @@ LoginDialog::LoginDialog(QWidget *parent) :
     }
 
     if (!ui->ipaddress->count()) {
-        qDebug() << QObject::tr("Could NOT find available ip addresses");
+        logger()->info(QString("Could NOT find available ip addresses"));
         QMessageBox::information(NULL, "Info", QObject::tr("No available ip addresses"), QMessageBox::Ok);
     } else {
         ui->ipaddress->setCurrentIndex(0);
@@ -31,9 +31,9 @@ void LoginDialog::tryLogin() {
     QHostAddress address(ui->ipaddress->currentText());
     if (!tcpServer->listen(address, port)) {
         QMessageBox::information(NULL, "Info", QObject::tr("Specified port %1 is already in use").arg(port), QMessageBox::Ok);
-        qDebug() <<  QObject::tr("Unable to start the server: %1.").arg(tcpServer->errorString());
+        logger()->info(QString("Unable to start the server: %1.").arg(tcpServer->errorString()));
     } else {
-        qDebug() << QObject::tr("Server started!");
+        logger()->info(QString("Server started!"));
         hide();
         QString login = ui->login->text();
         QSharedPointer<i2imodel::User> myUser(new i2imodel::User(login, address.toIPv4Address(), port));

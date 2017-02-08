@@ -2,6 +2,7 @@
 #define LOGINDIALOG_H
 #include <QDialog>
 #include <QTcpServer>
+#include <log4qt/logger.h>
 #include "ui_LoginDialog.h"
 #include "User.h"
 
@@ -12,7 +13,7 @@ class LoginDialog;
 class LoginDialog : public QDialog
 {
     Q_OBJECT
-
+    LOG4QT_DECLARE_QCLASS_LOGGER
 public:
     explicit LoginDialog(QWidget *parent = 0);
     ~LoginDialog();
