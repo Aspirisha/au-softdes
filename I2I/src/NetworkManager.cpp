@@ -8,14 +8,15 @@ namespace i2inet {
 
 using User = i2imodel::User;
 
-NetworkManager::NetworkManager(QSharedPointer<User> ownUser, QSharedPointer<QTcpServer> server)
-    : ownUser(ownUser), server(server)
+NetworkManager::NetworkManager(QSharedPointer<User> ownUser, QSharedPointer<ITcpServer> server,
+                               std::function<ITcpSocket*(QObject*)> socketFactory,
+                               QSharedPointer<IUdpSocket> broadcast)
+    : ownUser(ownUser), server(server), socketFactory(socketFactory), broadcastSocket(broadcast)
 {
-    socket = new QUdpSocket(this);
-    socket->bind(BROADCAST_PORT, QUdpSocket::ShareAddress);
-    connect(socket, SIGNAL(readyRead()),
+    broadcastSocket->bind(BROADCAST_PORT, QUdpSocket::ShareAddress);
+    connect(broadcastSocket.data(), SIGNAL(readyRead()),
                 this, SLOT(processPendingDatagrams()));
-    QObject::connect(server.data(), &QTcpServer::newConnection, this, &NetworkManager::onPeerConnection);
+    QObject::connect(server.data(), &ITcpServer::newConnection, this, &NetworkManager::onPeerConnection);
     sendAliveMessage();
 }
 
@@ -29,7 +30,7 @@ void NetworkManager::sendMessage(i2imodel::userid_t currentPeer, QString text)
         return;
     }
     if (chat == activeChats.end()) {
-        QTcpSocket *client = new QTcpSocket(this);
+        ITcpSocket *client = socketFactory(this);
 
 
         quint32 ip = peerInfo->peer->getIp();
@@ -52,8 +53,7 @@ void NetworkManager::ownLoginChanged() const
 {
     QByteArray datagram = BroadcastMessage(BroadcastRequestType::CHANGE_LOGIN, ownUser).serialize();
     logger()->info("Sending broadcast change login message");
-    socket->writeDatagram(datagram.data(), datagram.size(),
-                          QHostAddress::Broadcast, BROADCAST_PORT);
+    broadcastSocket->writeDatagram(datagram, QHostAddress::Broadcast, BROADCAST_PORT);
 }
 
 void NetworkManager::connectToTiny9000Client(QHostAddress ip, quint16 port)
@@ -66,13 +66,13 @@ void NetworkManager::connectToTiny9000Client(QHostAddress ip, quint16 port)
         return;
     }
 
-    QTcpSocket *socket = new QTcpSocket(this);
+    ITcpSocket *socket = socketFactory(this);
     logger()->info(QString("Establishing connection with Edgar peer server: trying ip %1 and port %2")
                    .arg(ip.toIPv4Address()).arg(port));
     socket->connectToHost(QHostAddress(ip), port);
     Tiny9000ChatProtocol* chat = createTiny9000ChatWriter(socket, ip.toIPv4Address(), port);
 
-    QObject::connect(socket, &QTcpSocket::connected, [this, chat, peerId](){
+    QObject::connect(socket, &ITcpSocket::connected, [this, chat, peerId](){
         onlineUsers.insert(peerId, PeerView(chat->getChat()->getPeer(), true));
         auto peer = chat->getChat()->getPeer();
         this->logger()->info(QString("Passing peer %1 to ui").arg(peer->getLogin()));
@@ -83,10 +83,10 @@ void NetworkManager::connectToTiny9000Client(QHostAddress ip, quint16 port)
 
 void NetworkManager::processPendingDatagrams()
 {
-    while (socket->hasPendingDatagrams()) {
+    while (broadcastSocket->hasPendingDatagrams()) {
         QByteArray datagram;
-        datagram.resize(socket->pendingDatagramSize());
-        socket->readDatagram(datagram.data(), datagram.size());
+        datagram.resize(broadcastSocket->pendingDatagramSize());
+        broadcastSocket->readDatagram(datagram.data(), datagram.size());
         logger()->info("Received datagram");
 
         BroadcastMessage m = BroadcastMessage::deserialize(datagram);
@@ -118,7 +118,7 @@ void NetworkManager::processPendingDatagrams()
 void NetworkManager::onPeerConnection()
 {
     logger()->info("Somebody is trying to connect");
-    QTcpSocket *client = this->server->nextPendingConnection();
+    ITcpSocket *client = this->server->nextPendingConnection();
 
     QObject::connect(client, SIGNAL(readyRead()), this, SLOT(protocolDetector()));
 }
@@ -153,7 +153,7 @@ void NetworkManager::removeTiny9000Chat()
 
 void NetworkManager::protocolDetector()
 {
-    QTcpSocket *client = dynamic_cast<QTcpSocket*>(sender());
+    ITcpSocket *client = dynamic_cast<ITcpSocket*>(sender());
     if (client->bytesAvailable() < AbstractChatProtocol::PROTOCOL_ID_SIZE)
         return;
 
@@ -176,8 +176,7 @@ void NetworkManager::sendAliveMessage() const
 {
     QByteArray datagram = BroadcastMessage(BroadcastRequestType::ALIVE, ownUser).serialize();
     logger()->info("Sending broadcast alive message");
-    socket->writeDatagram(datagram.data(), datagram.size(),
-                          QHostAddress::Broadcast, BROADCAST_PORT);
+    broadcastSocket->writeDatagram(datagram, QHostAddress::Broadcast, BROADCAST_PORT);
 }
 
 
@@ -188,7 +187,7 @@ void NetworkManager::setupCommonControllerSignals(AbstractChatProtocol *chat)
 }
 
 
-I2IChatProtocol* NetworkManager::createChatController(QTcpSocket *client, bool iAmServer)
+I2IChatProtocol* NetworkManager::createChatController(ITcpSocket *client, bool iAmServer)
 {
     I2IChatProtocol* chat = new I2IChatProtocol(client, ownUser, iAmServer);
 
@@ -202,7 +201,7 @@ I2IChatProtocol* NetworkManager::createChatController(QTcpSocket *client, bool i
     return chat;
 }
 
-Tiny9000ChatProtocol *NetworkManager::createTiny9000ChatReader(QTcpSocket *client, quint16 loginSize)
+Tiny9000ChatProtocol *NetworkManager::createTiny9000ChatReader(ITcpSocket *client, quint16 loginSize)
 {
     Tiny9000ChatProtocol* chat = new Tiny9000ChatProtocol(client, ownUser, loginSize);
     QObject::connect(chat, SIGNAL(messageReceived(i2imodel::Message)), this, SLOT(removeTiny9000Chat()));
@@ -217,7 +216,7 @@ Tiny9000ChatProtocol *NetworkManager::createTiny9000ChatReader(QTcpSocket *clien
     return chat;
 }
 
-Tiny9000ChatProtocol *NetworkManager::createTiny9000ChatWriter(QTcpSocket *client, quint32 ip, quint16 port)
+Tiny9000ChatProtocol *NetworkManager::createTiny9000ChatWriter(ITcpSocket *client, quint32 ip, quint16 port)
 {
     Tiny9000ChatProtocol* chat = new Tiny9000ChatProtocol(client, ownUser, ip, port);
     QObject::connect(chat, SIGNAL(messageReceived(i2imodel::Message)), this, SLOT(removeTiny9000Chat()));

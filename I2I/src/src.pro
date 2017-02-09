@@ -3,32 +3,28 @@
 # Project created by QtCreator 2017-02-04T15:11:20
 #
 #-------------------------------------------------
+include(../defaults.pri)
 
-QT       += core gui network
+QT       += core network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = I2I
-TEMPLATE = app
+TEMPLATE = lib
+CONFIG += staticlib
 
 QMAKE_CXXFLAGS += -std=c++11
 
-# logger
-include(log4qt/src/log4qt/log4qt.pri)
-
-SOURCES += main.cpp \
-    LoginDialog.cpp \
-    MainWindow.cpp \
+SOURCES += \
     qt-json/json.cpp \
     User.cpp \
     Message.cpp \
     CustomIpEditor.cpp \
+    Protocol.cpp \
     NetworkManager.cpp \
-    Protocol.cpp
+    socketinterface.cpp
 
 HEADERS  += \
-    LoginDialog.h \
-    MainWindow.h \
     qt-json/json.h \
     ModelCommon.h \
     User.h \
@@ -36,8 +32,6 @@ HEADERS  += \
     Chat.h \
     CustomIpEditor.h \
     NetworkManager.h \
-    Protocol.h
+    Protocol.h \
+    socketinterface.h
 
-FORMS    += \
-    LoginDialog.ui \
-    MainWindow.ui

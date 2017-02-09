@@ -5,7 +5,8 @@
 #include <QTcpServer>
 #include <QListWidgetItem>
 #include <QColor>
-#include <log4qt/logger.h>
+#include "qtcpsocketwrapper.h"
+#include "log4qt/logger.h"
 #include "User.h"
 #include "Protocol.h"
 
@@ -16,6 +17,7 @@ class MainWindow;
 namespace i2inet {
 class NetworkManager;
 class BroadcastMessage;
+class IServer;
 }
 
 class MainWindow : public QMainWindow
@@ -27,7 +29,7 @@ public:
     ~MainWindow();
 private slots:
     void onChangeOwnLogin();
-    void onLoggedIn(QSharedPointer<QTcpServer> server, QSharedPointer<i2imodel::User> user);
+    void onLoggedIn(QSharedPointer<QTcpServerWrapper> server, QSharedPointer<i2imodel::User> user);
     void onBroadcastMessage(const i2inet::BroadcastMessage&);
     void onCurrentPeerChanged(QListWidgetItem*, QListWidgetItem*);
     void onGreet(QSharedPointer<i2imodel::Chat>);

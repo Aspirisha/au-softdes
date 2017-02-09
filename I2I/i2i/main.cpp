@@ -1,8 +1,8 @@
 #include <QApplication>
 #include "MainWindow.h"
 #include "LoginDialog.h"
-#include "log4qt/fileappender.h"
-#include "log4qt/logger.h"
+#include <log4qt/fileappender.h>
+#include <log4qt/logger.h>
 #include "log4qt/ttcclayout.h"
 #include "log4qt/logmanager.h"
 
@@ -32,8 +32,8 @@ int main(int argc, char *argv[]) {
         setupLogger(".i2i.log");
     else
         setupLogger(argv[1]);
-    QObject::connect(&loginDlg, SIGNAL(loggedIn(QSharedPointer<QTcpServer>, QSharedPointer<i2imodel::User>)),
-                     &mainWindow, SLOT(onLoggedIn(QSharedPointer<QTcpServer>, QSharedPointer<i2imodel::User>)));
+    QObject::connect(&loginDlg, SIGNAL(loggedIn(QSharedPointer<QTcpServerWrapper>, QSharedPointer<i2imodel::User>)),
+                     &mainWindow, SLOT(onLoggedIn(QSharedPointer<QTcpServerWrapper>, QSharedPointer<i2imodel::User>)));
     loginDlg.show();
     return a.exec();
 }

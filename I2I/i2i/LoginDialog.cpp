@@ -26,7 +26,7 @@ LoginDialog::~LoginDialog() {
 }
 
 void LoginDialog::tryLogin() {
-    QSharedPointer<QTcpServer> tcpServer(new QTcpServer());
+    QSharedPointer<QTcpServerWrapper> tcpServer(new QTcpServerWrapper());
     int port = ui->port->value();
     QHostAddress address(ui->ipaddress->currentText());
     if (!tcpServer->listen(address, port)) {

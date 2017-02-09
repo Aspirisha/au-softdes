@@ -5,6 +5,7 @@
 #include "ui_MainWindow.h"
 #include "log4qt/logger.h"
 #include "NetworkManager.h"
+#include "qtcpsocketwrapper.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -47,11 +48,13 @@ void MainWindow::onChangeOwnLogin()
     }
 }
 
-void MainWindow::onLoggedIn(QSharedPointer<QTcpServer> server, QSharedPointer<i2imodel::User> user)
+void MainWindow::onLoggedIn(QSharedPointer<QTcpServerWrapper> server, QSharedPointer<i2imodel::User> user)
 {
     this->user = user;
     loginById[user->getId()] = user->getLogin();
-    netManager.reset(new i2inet::NetworkManager(user, server));
+    netManager.reset(new i2inet::NetworkManager(user, server, [](QObject* parent) {
+                         return new QTcpSocketWrapper(parent);
+                     }, QSharedPointer<QUdpSocketWrapper>(new QUdpSocketWrapper(new QUdpSocket(this)))));
 
     QObject::connect(netManager.data(), SIGNAL(brodcastMessage(i2inet::BroadcastMessage)),
                      this, SLOT(onBroadcastMessage(i2inet::BroadcastMessage)));

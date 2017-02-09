@@ -1,8 +1,9 @@
 #ifndef NETWORKMANAGER_H
 #define NETWORKMANAGER_H
 
+#include <functional>
 #include <QUdpSocket>
-#include <log4qt/logger.h>
+#include "log4qt/logger.h"
 #include <QSharedPointer>
 #include "ModelCommon.h"
 namespace i2imodel {
@@ -15,6 +16,7 @@ class I2IChatProtocol;
 class Tiny9000ChatProtocol;
 class AbstractChatProtocol;
 
+
 QT_BEGIN_NAMESPACE
 class QTcpServer;
 class QTcpSocket;
@@ -22,6 +24,10 @@ class QUdpSocket;
 QT_END_NAMESPACE
 
 namespace i2inet {
+class ITcpServer;
+class ITcpSocket;
+class IUdpSocket;
+class ITcpSocketFactory;
 enum class BroadcastRequestType {
     ALIVE,
     CHANGE_LOGIN,
@@ -45,7 +51,8 @@ class NetworkManager : public QObject
     Q_OBJECT
     LOG4QT_DECLARE_QCLASS_LOGGER
 public:
-    NetworkManager(QSharedPointer<i2imodel::User>, QSharedPointer<QTcpServer>);
+    NetworkManager(QSharedPointer<i2imodel::User>, QSharedPointer<ITcpServer>,
+                   std::function<ITcpSocket*(QObject*)>, QSharedPointer<IUdpSocket>);
     void sendMessage(i2imodel::userid_t currentPeer, QString text);
     void ownLoginChanged() const;
 
@@ -105,15 +112,16 @@ private:
     void sendAliveMessage() const;
 
     void setupCommonControllerSignals(AbstractChatProtocol *);
-    I2IChatProtocol* createChatController(QTcpSocket *client, bool iAmServer);
-    Tiny9000ChatProtocol* createTiny9000ChatReader(QTcpSocket *client, quint16 loginSize);
+    I2IChatProtocol* createChatController(ITcpSocket *client, bool iAmServer);
+    Tiny9000ChatProtocol* createTiny9000ChatReader(ITcpSocket *client, quint16 loginSize);
 
     // creates new model::Chat object
-    Tiny9000ChatProtocol *createTiny9000ChatWriter(QTcpSocket *client, quint32 ip, quint16 port);
-    QUdpSocket *socket;
+    Tiny9000ChatProtocol *createTiny9000ChatWriter(ITcpSocket *client, quint32 ip, quint16 port);
+    QSharedPointer<IUdpSocket> broadcastSocket;
     QMap<i2imodel::userid_t, Tiny9000ChatProtocol*> oldTiny9000Chats;
     QSharedPointer<i2imodel::User> ownUser;
-    QSharedPointer<QTcpServer> server;
+    QSharedPointer<ITcpServer> server;
+    std::function<ITcpSocket*(QObject*)> socketFactory;
 
     struct PeerView {
         PeerView(QSharedPointer<i2imodel::User>, bool);

@@ -4,6 +4,7 @@
 #include <QTcpSocket>
 #include <QTimer>
 #include "log4qt/logger.h"
+#include "socketinterface.h"
 #include "ModelCommon.h"
 #include "Chat.h"
 
@@ -11,7 +12,7 @@ class AbstractChatProtocol : public QObject {
     Q_OBJECT
     LOG4QT_DECLARE_QCLASS_LOGGER
 public:
-    AbstractChatProtocol(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser);
+    AbstractChatProtocol(i2inet::ITcpSocket *client, QSharedPointer<i2imodel::User> ownUser);
     i2imodel::userid_t getChatId() const { return chatId; } // may return 0 before greeting!!!
     QSharedPointer<i2imodel::Chat> getChat() { return chats[chatId]; } // may return null before greeting!!
     virtual void sendMessage(QString text) = 0;
@@ -26,7 +27,7 @@ public slots:
 protected slots:
     virtual void onSocketConnected() = 0;
 protected:
-    QTcpSocket *client;
+    i2inet::ITcpSocket *client;
     QSharedPointer<i2imodel::User> ownUser;
     static QMap<i2imodel::userid_t, QSharedPointer<i2imodel::Chat>> chats;
     i2imodel::userid_t chatId;
@@ -37,7 +38,7 @@ class I2IChatProtocol : public AbstractChatProtocol
     Q_OBJECT
     LOG4QT_DECLARE_QCLASS_LOGGER
 public:
-    I2IChatProtocol(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, bool iAmServer);
+    I2IChatProtocol(i2inet::ITcpSocket *client, QSharedPointer<i2imodel::User> ownUser, bool iAmServer);
     void sendMessage(QString text) override;
 
     static const quint16 PROTOCOL_ID;
@@ -78,10 +79,10 @@ class Tiny9000ChatProtocol : public AbstractChatProtocol {
     LOG4QT_DECLARE_QCLASS_LOGGER
 public:
     // when we are server
-    Tiny9000ChatProtocol(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, quint16 loginSize);
+    Tiny9000ChatProtocol(i2inet::ITcpSocket *client, QSharedPointer<i2imodel::User> ownUser, quint16 loginSize);
 
     // when we are client
-    Tiny9000ChatProtocol(QTcpSocket *client, QSharedPointer<i2imodel::User> ownUser, quint32 ip, quint16 port);
+    Tiny9000ChatProtocol(i2inet::ITcpSocket *client, QSharedPointer<i2imodel::User> ownUser, quint32 ip, quint16 port);
     void sendMessage(QString text) override;
 signals:
     void userLoginRefined(QSharedPointer<i2imodel::User>);
@@ -110,7 +111,7 @@ private:
         QString author;
         qint32 port;
 
-        i2imodel::Message getMessage(QTcpSocket *client);
+        i2imodel::Message getMessage(i2inet::ITcpSocket *client);
         void clear();
     } notReadyMessage;
 

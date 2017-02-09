@@ -1,7 +1,7 @@
 #ifndef LOGINDIALOG_H
 #define LOGINDIALOG_H
 #include <QDialog>
-#include <QTcpServer>
+#include "qtcpsocketwrapper.h"
 #include <log4qt/logger.h>
 #include "ui_LoginDialog.h"
 #include "User.h"
@@ -18,7 +18,7 @@ public:
     explicit LoginDialog(QWidget *parent = 0);
     ~LoginDialog();
 signals:
-    void loggedIn(QSharedPointer<QTcpServer> server, QSharedPointer<i2imodel::User> user);
+    void loggedIn(QSharedPointer<QTcpServerWrapper> server, QSharedPointer<i2imodel::User> user);
 public slots:
     void tryLogin();
     void onLoginChanged(QString);
