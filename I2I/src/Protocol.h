@@ -62,7 +62,7 @@ private:
         MESSAGE,
     };
 
-    static const size_t CHECK_INACTIVITY_DELTA_SECONDS = 300;
+    static const size_t CHECK_INACTIVITY_DELTA_SECONDS = 300000;
     qint64 lastInteractionTimestamp;
     QList<i2imodel::Message> pendingMessages;
     QList<i2imodel::Message> messagesNotWrittentToChat;
