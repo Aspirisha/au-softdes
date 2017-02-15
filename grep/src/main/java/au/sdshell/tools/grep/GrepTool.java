@@ -21,19 +21,21 @@ import static se.softhouse.jargo.Arguments.*;
 
 /**
  * Created by andy on 9/29/16.
+ * Grep is dedicated to search regular expression matches in text either
+ * processing stdin or file.
  */
 public class GrepTool {
-    public static final String ANSI_RESET = "\u001B[0m";
-    public static final String ANSI_RED = "\u001B[31m";
-    public static final String ANSI_CYAN = "\u001B[36m";
+    private static final String ANSI_RESET = "\u001B[0m";
+    private static final String ANSI_RED = "\u001B[31m";
+    private static final String ANSI_CYAN = "\u001B[36m";
 
     private boolean caseInsensitive;
     private boolean wordsOnly;
     private int linesAfterMatch;
-    String pattern;
-    String fileName;
+    private String pattern;
+    private String fileName;
 
-    GrepTool(String[] args) {
+    private GrepTool(String[] args) {
         Argument<Boolean> caseInsensitive = optionArgument("-i")
                 .description("Case insensitive search.")
                 .defaultValue(false).build();
